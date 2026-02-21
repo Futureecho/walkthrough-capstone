@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Property Management</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="flex-between">
+    <div>
+      <h1>Properties</h1>
+      <div class="subtitle">Manage properties &amp; rooms</div>
+    </div>
+    <a href="/owner" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Dashboard</a>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Create Property -->
+  <div class="card">
+    <h2>Add Property</h2>
+    <input type="text" id="prop-label" placeholder="Property label (e.g. Unit 4B)">
+    <input type="text" id="prop-address" placeholder="Address">
+    <button class="btn btn-primary btn-block" id="create-prop-btn">Create Property</button>
+  </div>
+
+  <!-- Property List -->
+  <div class="card">
+    <h2>Your Properties</h2>
+    <div id="property-list"><div class="spinner"></div></div>
+  </div>
+
+  <!-- Property Detail (hidden) -->
+  <div class="card hidden" id="property-detail">
+    <div class="flex-between mb-1">
+      <h2 id="detail-label"></h2>
+      <button class="btn btn-outline" style="padding:.3rem .6rem;font-size:.85rem" id="back-to-list">Back</button>
+    </div>
+    <p class="text-muted mb-1" id="detail-address"></p>
+
+    <!-- Room Templates -->
+    <h3 class="mt-2">Room Templates</h3>
+    <div id="room-template-list"></div>
+    <div class="mt-1" style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem">
+      <input type="text" id="new-room-name" placeholder="Room name (e.g. Kitchen)">
+      <div id="new-room-positions"></div>
+      <button class="btn btn-outline" style="padding:.3rem .6rem;font-size:.85rem;margin-bottom:.5rem" id="add-position-btn">+ Add Position</button>
+      <button class="btn btn-primary btn-block" id="add-room-btn">Add Room Template</button>
+    </div>
+
+    <!-- Request Inspection -->
+    <h3 class="mt-2">Request Inspection</h3>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem">
+      <select id="req-type">
+        <option value="move_in">Move-In</option>
+        <option value="move_out">Move-Out</option>
+      </select>
+      <input type="text" id="req-tenant" placeholder="Tenant name">
+      <input type="text" id="req-tenant2" placeholder="Second tenant (optional)">
+      <input type="number" id="req-days" value="7" min="1" max="90" placeholder="Link duration (days)">
+      <button class="btn btn-success btn-block" id="req-link-btn">Generate Tenant Link</button>
+      <div id="link-result" class="hidden mt-1" style="padding:.5rem;background:#dcfce7;border-radius:var(--radius)"></div>
+    </div>
+
+    <!-- Published Reports -->
+    <h3 class="mt-2">Sessions</h3>
+    <div id="session-list"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="/static/js/owner-property.js"></script>
+</body>
+</html>

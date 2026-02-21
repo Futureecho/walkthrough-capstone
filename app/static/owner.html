@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Dashboard</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="flex-between">
+    <div>
+      <h1>Owner Dashboard</h1>
+      <div class="subtitle">Property Management</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <a href="/owner/properties" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Properties</a>
+      <a href="/owner/settings" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Settings</a>
+      <button id="logout-btn" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Pending Inspections -->
+  <div class="card">
+    <h2>Pending Inspections</h2>
+    <p class="text-muted mb-1">Active links — waiting on tenants</p>
+    <div id="pending-inspections">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Pending Review -->
+  <div class="card">
+    <h2>Pending Review</h2>
+    <p class="text-muted mb-1">Completed — awaiting your review</p>
+    <div id="pending-review">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/owner.js"></script>
+</body>
+</html>

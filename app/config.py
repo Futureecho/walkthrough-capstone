@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///data/walkthrough.db"
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    gemini_api_key: str = ""
+    grok_api_key: str = ""
+    fernet_key: str = ""
     quality_gate: QualityGateConfig = Field(default_factory=QualityGateConfig)
     coverage: CoverageConfig = Field(default_factory=CoverageConfig)
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)

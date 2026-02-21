@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import String, Float, ForeignKey, JSON, Text
+from sqlalchemy import String, Float, Boolean, ForeignKey, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, ULIDMixin
@@ -17,5 +17,8 @@ class Candidate(Base, ULIDMixin):
     followup_status: Mapped[str] = mapped_column(String(30), default="pending")  # pending | responded | closeup_uploaded
     tenant_response: Mapped[str] = mapped_column(String(30), default="")  # confirm | disagree | ""
     tenant_comment: Mapped[str] = mapped_column(Text, default="")
+    owner_accepted: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    repair_cost: Mapped[float] = mapped_column(Float, default=0.0)
+    owner_notes: Mapped[str] = mapped_column(Text, default="")
 
     comparison = relationship("Comparison", back_populates="candidates")

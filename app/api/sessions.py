@@ -37,3 +37,22 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
     if not sess:
         raise HTTPException(404, "Session not found")
     return sess
+
+
+@router.put("/sessions/{session_id}/status")
+async def update_session_status(
+    session_id: str, body: dict, db: AsyncSession = Depends(get_db)
+):
+    """Update session report_status (e.g. tenant finishes review → pending_review)."""
+    sess = await crud.get_session(db, session_id)
+    if not sess:
+        raise HTTPException(404, "Session not found")
+    new_status = body.get("report_status")
+    if new_status not in ("pending_review", "submitted"):
+        raise HTTPException(400, "Invalid status")
+    # Only allow forward transitions, never back to active/draft from here
+    if sess.report_status in ("published",):
+        raise HTTPException(409, "Session already published")
+    sess.report_status = new_status
+    await db.commit()
+    return {"ok": True, "report_status": new_status}

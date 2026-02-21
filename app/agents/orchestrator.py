@@ -2,10 +2,36 @@
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import crud
 from app.services.ws_manager import ws_manager
+
+logger = logging.getLogger(__name__)
+
+
+async def _get_owner_llm_provider(session_id: str, db: AsyncSession) -> str:
+    """Trace session → property → owner → settings to get the llm_provider."""
+    session = await crud.get_session(db, session_id)
+    if not session:
+        return "openai"
+    prop = await crud.get_property(db, session.property_id)
+    if not prop or not prop.owner_id:
+        return "openai"
+    settings = await crud.get_owner_settings(db, prop.owner_id)
+    if not settings:
+        return "openai"
+    return settings.llm_provider
+
+
+async def _set_review_flag(session_id: str, flag: str, db: AsyncSession):
+    """Set session.review_flag — last write wins for multi-capture sessions."""
+    session = await crud.get_session(db, session_id)
+    if session:
+        session.review_flag = flag
+        await db.commit()
 
 
 async def run_capture_pipeline(capture_id: str, session_id: str, db: AsyncSession):
@@ -17,38 +43,59 @@ async def run_capture_pipeline(capture_id: str, session_id: str, db: AsyncSessio
     if not capture:
         return
 
-    # Step 1: Quality Gate
-    quality_result = await run_quality_gate(capture, db)
-    await ws_manager.broadcast(session_id, {
-        "event": "quality_update",
-        "capture_id": capture_id,
-        "data": quality_result,
-    })
-
-    # If quality gate failed, stop
-    if quality_result.get("status") == "failed":
-        await crud.update_capture(db, capture, status="failed", metrics_json=quality_result)
+    # Check if owner has opted for manual review
+    llm_provider = await _get_owner_llm_provider(session_id, db)
+    if llm_provider == "none":
+        await crud.update_capture(db, capture, status="passed")
+        await _set_review_flag(session_id, "manual_review", db)
+        await ws_manager.broadcast(session_id, {
+            "event": "pipeline_skipped",
+            "capture_id": capture_id,
+            "data": {"reason": "manual_review"},
+        })
         return
 
-    # Step 2: Coverage Review
-    coverage_result = await run_coverage_review(capture, db)
-    await ws_manager.broadcast(session_id, {
-        "event": "coverage_update",
-        "capture_id": capture_id,
-        "data": coverage_result,
-    })
+    try:
+        # Step 1: Quality Gate
+        quality_result = await run_quality_gate(capture, db)
+        await ws_manager.broadcast(session_id, {
+            "event": "quality_update",
+            "capture_id": capture_id,
+            "data": quality_result,
+        })
 
-    final_status = "passed" if coverage_result.get("complete", False) else "needs_coverage"
-    await crud.update_capture(
-        db, capture,
-        status=final_status,
-        metrics_json=quality_result,
-        coverage_json=coverage_result,
-    )
+        # If quality gate failed, stop (no review flag — tenant retries)
+        if quality_result.get("status") == "failed":
+            await crud.update_capture(db, capture, status="failed", metrics_json=quality_result)
+            return
 
-    # Step 3: Auto-trigger comparison if this is a move-out and matching move-in exists
-    if final_status == "passed":
-        await _try_auto_comparison(capture, session_id, db)
+        # Step 2: Coverage Review
+        coverage_result = await run_coverage_review(capture, db)
+        await ws_manager.broadcast(session_id, {
+            "event": "coverage_update",
+            "capture_id": capture_id,
+            "data": coverage_result,
+        })
+
+        final_status = "passed" if coverage_result.get("complete", False) else "needs_coverage"
+        await crud.update_capture(
+            db, capture,
+            status=final_status,
+            metrics_json=quality_result,
+            coverage_json=coverage_result,
+        )
+
+        # AI succeeded — mark session as AI-reviewed
+        await _set_review_flag(session_id, "ai_review_complete", db)
+
+        # Step 3: Auto-trigger comparison if this is a move-out and matching move-in exists
+        if final_status == "passed":
+            await _try_auto_comparison(capture, session_id, db)
+
+    except Exception:
+        # AI pipeline failed — degrade to manual review
+        await _set_review_flag(session_id, "manual_review", db)
+        raise
 
 
 async def _try_auto_comparison(capture, session_id: str, db: AsyncSession):

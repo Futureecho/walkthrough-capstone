@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report Review</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="flex-between">
+    <div>
+      <h1>Report Review</h1>
+      <div class="subtitle" id="report-subtitle">Loading...</div>
+    </div>
+    <a href="/owner" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Dashboard</a>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Report Header -->
+  <div class="card" id="report-header">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Room Details -->
+  <div id="room-details"></div>
+
+  <!-- Summary -->
+  <div class="card hidden" id="summary-card">
+    <h2>Summary</h2>
+    <table class="summary-table">
+      <tr><td>Total discrepancies flagged</td><td id="sum-flagged">0</td></tr>
+      <tr><td>Accepted by owner</td><td id="sum-accepted">0</td></tr>
+      <tr><td>Total repair costs</td><td id="sum-cost">$0.00</td></tr>
+    </table>
+  </div>
+
+  <!-- Actions -->
+  <div class="hidden" id="actions-card">
+    <button class="btn btn-success btn-block mb-1" id="publish-btn" disabled>Publish Report</button>
+    <button class="btn btn-outline btn-block mb-1" id="reactivate-btn">Reactivate for Tenant</button>
+    <button class="btn btn-danger btn-block mb-1" id="cancel-btn">Cancel Report</button>
+    <a href="/owner" class="btn btn-outline btn-block">Back to Dashboard</a>
+    <div id="link-result" class="hidden mt-1" style="padding:.75rem;background:#dcfce7;border-radius:var(--radius)"></div>
+  </div>
+</div>
+
+<!-- PDF Modal -->
+<div id="pdf-modal" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center">
+  <div class="card" style="max-width:400px;margin:1rem">
+    <h2>Report Published!</h2>
+    <p class="text-muted mb-2">Would you like to generate a PDF report?</p>
+    <div class="flex gap-1">
+      <button class="btn btn-primary" style="flex:1" id="pdf-yes">Generate PDF</button>
+      <button class="btn btn-outline" style="flex:1" id="pdf-no">No Thanks</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="/static/js/owner-report.js"></script>
+</body>
+</html>

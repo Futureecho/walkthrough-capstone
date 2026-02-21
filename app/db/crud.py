@@ -2,13 +2,148 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    Property, Session, Capture, CaptureImage,
-    Annotation, Comparison, Candidate,
+    Owner, OwnerSettings, Property, RoomTemplate, Session,
+    Capture, CaptureImage, Annotation, Comparison, Candidate,
+    TenantLink,
 )
+
+
+# ── Owner ────────────────────────────────────────────────
+
+async def get_owner_by_username(db: AsyncSession, username: str) -> Owner | None:
+    result = await db.execute(select(Owner).where(Owner.username == username))
+    return result.scalars().first()
+
+
+async def create_owner(db: AsyncSession, username: str, password_hash: str) -> Owner:
+    owner = Owner(username=username, password_hash=password_hash)
+    db.add(owner)
+    await db.commit()
+    await db.refresh(owner)
+    return owner
+
+
+async def get_owner(db: AsyncSession, owner_id: str) -> Owner | None:
+    return await db.get(Owner, owner_id)
+
+
+# ── OwnerSettings ────────────────────────────────────────
+
+async def get_owner_settings(db: AsyncSession, owner_id: str) -> OwnerSettings | None:
+    result = await db.execute(
+        select(OwnerSettings).where(OwnerSettings.owner_id == owner_id)
+    )
+    return result.scalars().first()
+
+
+async def create_owner_settings(db: AsyncSession, owner_id: str) -> OwnerSettings:
+    settings = OwnerSettings(owner_id=owner_id)
+    db.add(settings)
+    await db.commit()
+    await db.refresh(settings)
+    return settings
+
+
+async def update_owner_settings(db: AsyncSession, settings: OwnerSettings, **kwargs) -> OwnerSettings:
+    for k, v in kwargs.items():
+        if v is not None:
+            setattr(settings, k, v)
+    await db.commit()
+    await db.refresh(settings)
+    return settings
+
+
+# ── RoomTemplate ─────────────────────────────────────────
+
+async def create_room_template(
+    db: AsyncSession, property_id: str, name: str,
+    display_order: int = 0, positions: list | None = None
+) -> RoomTemplate:
+    rt = RoomTemplate(
+        property_id=property_id, name=name,
+        display_order=display_order, positions=positions or [],
+    )
+    db.add(rt)
+    await db.commit()
+    await db.refresh(rt)
+    return rt
+
+
+async def list_room_templates_for_property(db: AsyncSession, property_id: str) -> list[RoomTemplate]:
+    result = await db.execute(
+        select(RoomTemplate)
+        .where(RoomTemplate.property_id == property_id)
+        .order_by(RoomTemplate.display_order)
+    )
+    return list(result.scalars().all())
+
+
+async def get_room_template(db: AsyncSession, room_id: str) -> RoomTemplate | None:
+    return await db.get(RoomTemplate, room_id)
+
+
+async def update_room_template(db: AsyncSession, rt: RoomTemplate, **kwargs) -> RoomTemplate:
+    for k, v in kwargs.items():
+        if v is not None:
+            setattr(rt, k, v)
+    await db.commit()
+    await db.refresh(rt)
+    return rt
+
+
+async def delete_room_template(db: AsyncSession, rt: RoomTemplate) -> None:
+    await db.delete(rt)
+    await db.commit()
+
+
+# ── TenantLink ───────────────────────────────────────────
+
+async def create_tenant_link(
+    db: AsyncSession, session_id: str, token: str, expires_at: datetime
+) -> TenantLink:
+    link = TenantLink(session_id=session_id, token=token, expires_at=expires_at)
+    db.add(link)
+    await db.commit()
+    await db.refresh(link)
+    return link
+
+
+async def get_tenant_link_by_token(db: AsyncSession, token: str) -> TenantLink | None:
+    result = await db.execute(
+        select(TenantLink).where(TenantLink.token == token, TenantLink.is_active == True)
+    )
+    return result.scalars().first()
+
+
+async def deactivate_tenant_link(db: AsyncSession, link: TenantLink) -> TenantLink:
+    link.is_active = False
+    await db.commit()
+    await db.refresh(link)
+    return link
+
+
+async def list_active_links(db: AsyncSession) -> list[TenantLink]:
+    result = await db.execute(
+        select(TenantLink).where(TenantLink.is_active == True)
+    )
+    return list(result.scalars().all())
+
+
+async def get_expired_active_links(db: AsyncSession) -> list[TenantLink]:
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(TenantLink).where(
+            TenantLink.is_active == True,
+            TenantLink.expires_at < now,
+        )
+    )
+    return list(result.scalars().all())
 
 
 # ── Reference Images (ghost overlay) ────────────────────

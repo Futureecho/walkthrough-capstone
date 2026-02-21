@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    color: #1e293b;
+    margin: 0;
+    padding: 20px;
+  }
+  .header {
+    text-align: center;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    color: #2563eb;
+    font-size: 20px;
+    margin: 0 0 5px 0;
+  }
+  .header p {
+    color: #64748b;
+    margin: 3px 0;
+    font-size: 11px;
+  }
+  .info-table {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  .info-table td {
+    padding: 4px 8px;
+    vertical-align: top;
+    font-size: 11px;
+  }
+  .info-table .label {
+    color: #64748b;
+    width: 120px;
+    font-weight: bold;
+  }
+  .room-header {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    margin: 15px 0 8px 0;
+    font-size: 14px;
+    font-weight: bold;
+    border-left: 3px solid #2563eb;
+  }
+  .position-row {
+    padding: 4px 12px;
+    display: flex;
+    align-items: center;
+  }
+  .check {
+    color: #16a34a;
+    font-weight: bold;
+    margin-right: 8px;
+  }
+  .discrepancy {
+    border: 1px solid #fbbf24;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 8px 0;
+    background: #fffbeb;
+  }
+  .discrepancy.accepted {
+    border-color: #dc2626;
+    background: #fef2f2;
+  }
+  .discrepancy-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  .image-pair {
+    width: 100%;
+    margin: 8px 0;
+  }
+  .image-pair td {
+    width: 50%;
+    padding: 4px;
+    text-align: center;
+    vertical-align: top;
+  }
+  .image-pair img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  .image-pair .caption {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 3px;
+  }
+  .detail-row {
+    font-size: 10px;
+    color: #64748b;
+    margin: 3px 0;
+  }
+  .cost {
+    font-size: 12px;
+    font-weight: bold;
+    color: #dc2626;
+  }
+  .notes {
+    font-size: 10px;
+    color: #374151;
+    font-style: italic;
+    margin-top: 5px;
+    padding: 5px;
+    background: #f9fafb;
+    border-radius: 3px;
+  }
+  .summary {
+    margin-top: 25px;
+    border-top: 2px solid #1e293b;
+    padding-top: 10px;
+  }
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .summary-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+  }
+  .summary-table td:last-child {
+    text-align: right;
+    font-weight: bold;
+  }
+  .summary-table tr.total td {
+    border-top: 2px solid #1e293b;
+    border-bottom: 2px solid #1e293b;
+    font-size: 13px;
+  }
+  .footer {
+    margin-top: 40px;
+    font-size: 10px;
+    color: #64748b;
+  }
+  .signature-line {
+    margin-top: 30px;
+    padding-top: 10px;
+  }
+  .sig-field {
+    display: inline-block;
+    width: 45%;
+    margin-right: 5%;
+    border-top: 1px solid #1e293b;
+    padding-top: 5px;
+    font-size: 10px;
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Property Inspection Report</h1>
+  <p>{{ property.address or property.label }}</p>
+  <p>Generated {{ report_date }}</p>
+</div>
+
+<table class="info-table">
+  <tr>
+    <td class="label">Property:</td>
+    <td>{{ property.label }}{% if property.address %} — {{ property.address }}{% endif %}</td>
+  </tr>
+  <tr>
+    <td class="label">Inspection Type:</td>
+    <td>{{ "Move-In" if session.type == "move_in" else "Move-Out" }}</td>
+  </tr>
+  <tr>
+    <td class="label">Tenant(s):</td>
+    <td>{{ session.tenant_name }}{% if session.tenant_name_2 %} &amp; {{ session.tenant_name_2 }}{% endif %}</td>
+  </tr>
+  <tr>
+    <td class="label">Inspection Date:</td>
+    <td>{{ session.created_at.strftime('%B %d, %Y') }}</td>
+  </tr>
+  <tr>
+    <td class="label">Report Status:</td>
+    <td>{{ session.report_status | upper }}</td>
+  </tr>
+</table>
+
+{% for room_name, room_data in rooms.items() %}
+<div class="room-header">{{ room_name }}</div>
+
+{% if room_data.candidates %}
+  {% for cand in room_data.candidates %}
+    {% if cand.owner_accepted %}
+    <div class="discrepancy accepted">
+      <div class="discrepancy-header">Discrepancy — {{ room_name }}</div>
+
+      {% if cand.crop_b64 %}
+      <table class="image-pair">
+        <tr>
+          <td>
+            <img src="data:image/jpeg;base64,{{ cand.crop_b64 }}" alt="Flagged region">
+            <div class="caption">Flagged Area</div>
+          </td>
+          <td>
+            {% if cand.ref_b64 %}
+            <img src="data:image/jpeg;base64,{{ cand.ref_b64 }}" alt="Reference">
+            <div class="caption">Move-In Reference</div>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+      {% endif %}
+
+      <div class="detail-row">Confidence: {{ (cand.confidence * 100) | round | int }}%</div>
+      {% if cand.reason_codes %}
+      <div class="detail-row">Indicators: {{ cand.reason_codes | join(', ') }}</div>
+      {% endif %}
+      {% if cand.tenant_response %}
+      <div class="detail-row">Tenant response: {{ cand.tenant_response }}{% if cand.tenant_comment %} — {{ cand.tenant_comment }}{% endif %}</div>
+      {% endif %}
+      <div class="cost">Repair Cost: ${{ "%.2f" | format(cand.repair_cost or 0) }}</div>
+      {% if cand.owner_notes %}
+      <div class="notes">{{ cand.owner_notes }}</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  {% set has_accepted = room_data.candidates | selectattr('owner_accepted') | list %}
+  {% if not has_accepted %}
+  <div class="position-row"><span class="check">&#10003;</span> No accepted discrepancies</div>
+  {% endif %}
+{% else %}
+  <div class="position-row"><span class="check">&#10003;</span> No issues identified</div>
+{% endif %}
+{% endfor %}
+
+<div class="summary">
+  <table class="summary-table">
+    <tr>
+      <td>Total discrepancies flagged by AI</td>
+      <td>{{ total_flagged }}</td>
+    </tr>
+    <tr>
+      <td>Discrepancies accepted by owner</td>
+      <td>{{ total_accepted }}</td>
+    </tr>
+    <tr class="total">
+      <td>Total charges to be deducted from damage deposit</td>
+      <td>${{ "%.2f" | format(total_cost) }}</td>
+    </tr>
+  </table>
+</div>
+
+<div class="signature-line">
+  <div class="sig-field">Owner Signature: ________________</div>
+  <div class="sig-field">Date: ________________</div>
+</div>
+
+<div class="footer">
+  <p>This report was generated by the Walkthrough Capture System with AI-assisted damage detection.
+  All findings represent candidate differences identified through computer vision analysis and require
+  human review and confirmation.</p>
+</div>
+
+</body>
+</html>
