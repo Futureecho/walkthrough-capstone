@@ -22,10 +22,22 @@
   </div>
 
   <!-- Capture button -->
-  <button class="btn btn-primary btn-block mb-2" id="capture-btn">Capture Photo</button>
+  <button class="btn btn-primary btn-block" id="capture-btn">Capture Photo</button>
+
+  <!-- Submit button (directly below capture) -->
+  <button class="btn btn-success btn-block hidden" id="submit-btn" style="margin-top:.5rem">Submit for Review</button>
+
+  <!-- Force submit (after 2+ failures) -->
+  <button class="btn btn-warning btn-block hidden" id="force-submit-btn" style="margin-top:.5rem">Force Submit (Accept Warnings)</button>
+
+  <!-- Retake prompt -->
+  <div class="hidden" id="retake-prompt" style="margin-top:.5rem;padding:.75rem;background:#fef3c7;border:1px solid #fbbf24;border-radius:var(--radius)">
+    <p style="font-size:.9rem"><strong>Retake needed:</strong> <span id="retake-reason"></span></p>
+    <p class="text-muted" style="font-size:.85rem">Position the camera and tap Capture Photo above.</p>
+  </div>
 
   <!-- Status area -->
-  <div class="card" id="status-card">
+  <div class="card" style="margin-top:.75rem" id="status-card">
     <div class="flex-between mb-1">
       <h3>Photos</h3>
       <span id="photo-count">0 / 8</span>
@@ -47,11 +59,8 @@
     <div id="coverage-instructions" class="mt-1"></div>
   </div>
 
-  <!-- Submit button -->
-  <button class="btn btn-success btn-block mt-2 hidden" id="submit-btn">Submit for Review</button>
-
   <!-- Back link -->
-  <a href="/" class="btn btn-outline btn-block mt-2">Back to Property</a>
+  <a href="/" class="btn btn-outline btn-block mt-2" id="back-link">Back to Property</a>
 </div>
 
 <script src="/static/js/capture.js"></script>

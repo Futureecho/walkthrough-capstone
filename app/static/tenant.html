@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Property Inspection</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <h1>Property Inspection</h1>
+  <div class="subtitle" id="header-subtitle">Loading...</div>
+</div>
+
+<div class="container">
+  <!-- Loading -->
+  <div class="card" id="loading-card">
+    <div class="text-center"><div class="spinner"></div></div>
+  </div>
+
+  <!-- Error -->
+  <div class="card hidden" id="error-card">
+    <h2 style="color:var(--danger)">Link Error</h2>
+    <p id="error-msg" class="text-muted"></p>
+  </div>
+
+  <!-- Session Info -->
+  <div class="card hidden" id="session-info">
+    <div class="flex-between mb-1">
+      <h2 id="property-label"></h2>
+      <span class="badge badge-info" id="session-type-badge"></span>
+    </div>
+    <p class="text-muted" id="property-address"></p>
+    <p class="text-muted mt-1" id="tenant-info"></p>
+    <p class="text-muted" style="font-size:.8rem" id="expires-info"></p>
+  </div>
+
+  <!-- Room List -->
+  <div class="card hidden" id="rooms-card">
+    <h2>Rooms to Inspect</h2>
+    <ul class="room-list" id="room-list"></ul>
+  </div>
+
+  <!-- Submit Report -->
+  <div class="card hidden" id="submit-card">
+    <h2>Ready to Submit</h2>
+    <p class="text-muted mb-1">Review your rooms above, then submit the report for review.</p>
+    <button class="btn btn-primary btn-block" id="submit-report-btn">Submit Report</button>
+  </div>
+
+  <!-- All Done -->
+  <div class="card hidden" id="done-card">
+    <h2 style="color:var(--success)">Report Submitted</h2>
+    <p class="text-muted">Your inspection report has been submitted and is pending review.</p>
+  </div>
+</div>
+
+<!-- Submit modal -->
+<div id="submit-modal" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:var(--radius);max-width:400px;width:90%;padding:1.25rem">
+    <h2 id="modal-title" style="margin-bottom:.5rem"></h2>
+    <div id="modal-body" style="margin-bottom:1rem;color:var(--text-muted);font-size:.9rem"></div>
+    <div id="modal-actions" style="display:flex;gap:.5rem;flex-direction:column"></div>
+  </div>
+</div>
+
+<script src="/static/js/tenant.js"></script>
+</body>
+</html>
