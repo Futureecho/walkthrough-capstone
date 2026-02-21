@@ -12,3 +12,4 @@ dist/
 *.egg-info/
 .coverage
 htmlcov/
+test_photo.jpg
