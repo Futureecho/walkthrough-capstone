@@ -46,3 +46,34 @@ def decide_quality(
 
     # Everything in between = borderline
     return "borderline"
+
+
+def explain_quality(
+    blur: float, darkness: float, sharpness: float,
+    blur_threshold: float, darkness_threshold: float,
+    sharpness_threshold: float,
+) -> list[dict]:
+    """Return human-friendly rejection reasons with tips.
+
+    Each entry: {"issue": str, "detail": str, "tip": str}
+    """
+    reasons = []
+    if blur < blur_threshold:
+        reasons.append({
+            "issue": "Too blurry",
+            "detail": f"Sharpness score {blur:.0f} is below the minimum {blur_threshold:.0f}.",
+            "tip": "Hold your phone steady or brace it against a surface. Tap the screen to focus before shooting.",
+        })
+    if darkness < darkness_threshold:
+        reasons.append({
+            "issue": "Too dark",
+            "detail": f"Brightness level {darkness:.0f} is below the minimum {darkness_threshold:.0f}.",
+            "tip": "Turn on the room lights or open blinds. If needed, enable your phone's flash.",
+        })
+    if sharpness < sharpness_threshold:
+        reasons.append({
+            "issue": "Low detail",
+            "detail": f"Detail score {sharpness:.0f} is below the minimum {sharpness_threshold:.0f}.",
+            "tip": "Move closer or make sure the camera lens is clean. Avoid shooting through glass or screens.",
+        })
+    return reasons

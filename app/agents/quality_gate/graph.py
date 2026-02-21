@@ -13,7 +13,7 @@ from langgraph.graph import StateGraph, END
 
 from app.agents.state import QualityGateState, ImageMetrics
 from app.agents.quality_gate.tools import (
-    compute_blur, compute_darkness, compute_sharpness, decide_quality,
+    compute_blur, compute_darkness, compute_sharpness, decide_quality, explain_quality,
 )
 from app.agents.quality_gate.prompts import BORDERLINE_JUDGE_PROMPT
 from app.config import get_settings
@@ -186,12 +186,20 @@ async def run_quality_gate(capture: Capture, db: AsyncSession) -> dict:
                 "llm_verdict": m["llm_verdict"],
             })
 
-    return {
-        "status": result["overall_status"],
-        "images": {m["image_id"]: {
+    # Build per-image results with rejection reasons
+    images_out = {}
+    for m in result["metrics"]:
+        entry = {
             "status": m["status"],
             "blur_score": m["blur_score"],
             "darkness_score": m["darkness_score"],
             "sharpness_score": m["sharpness_score"],
-        } for m in result["metrics"]},
-    }
+        }
+        if m["status"] == "rejected":
+            entry["reasons"] = explain_quality(
+                m["blur_score"], m["darkness_score"], m["sharpness_score"],
+                cfg["blur_threshold"], cfg["darkness_threshold"], cfg["sharpness_threshold"],
+            )
+        images_out[m["image_id"]] = entry
+
+    return {"status": result["overall_status"], "images": images_out}

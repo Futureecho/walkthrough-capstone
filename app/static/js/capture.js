@@ -134,7 +134,7 @@ async function capturePhoto() {
     const data = await r.json();
 
     // Add thumbnail
-    addThumbnail(data.thumbnail_path, data.seq);
+    addThumbnail(data.thumbnail_path, data.seq, data.id);
     currentPosition++;
     updateGuideLabel();
     updatePhotoCount();
@@ -143,14 +143,18 @@ async function capturePhoto() {
   }
 }
 
-function addThumbnail(thumbPath, seq) {
+function addThumbnail(thumbPath, seq, imageId) {
   const grid = document.getElementById('thumbnails');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'thumb-wrapper';
+  wrapper.dataset.imageId = imageId || '';
+  wrapper.dataset.seq = seq;
   const img = document.createElement('img');
   img.src = '/' + thumbPath;
   img.alt = `Photo ${seq}`;
   img.className = 'quality-pending';
-  img.dataset.seq = seq;
-  grid.appendChild(img);
+  wrapper.appendChild(img);
+  grid.appendChild(wrapper);
 }
 
 function updateGuideLabel() {
@@ -194,25 +198,57 @@ function showQualityResults(data) {
   results.innerHTML = '';
 
   const images = data.images || {};
+  let imgIndex = 0;
   for (const [imgId, info] of Object.entries(images)) {
+    imgIndex++;
     const status = info.status === 'accepted' ? 'passed' : 'failed';
     const badge = status === 'passed' ? 'badge-success' : 'badge-danger';
     const div = document.createElement('div');
-    div.className = 'flex-between mb-1';
-    div.innerHTML = `
-      <span class="text-muted">Image</span>
-      <span class="badge ${badge}">${info.status}</span>
+    div.className = 'mb-1';
+    let html = `
+      <div class="flex-between">
+        <span class="text-muted">Photo ${imgIndex}</span>
+        <span class="badge ${badge}">${info.status}</span>
+      </div>
     `;
+    // Show rejection reasons and tips
+    if (info.reasons && info.reasons.length > 0) {
+      html += '<div class="quality-reasons">';
+      for (const r of info.reasons) {
+        html += `
+          <div class="quality-reason">
+            <strong>${r.issue}</strong>
+            <span class="text-muted"> — ${r.detail}</span>
+            <div class="quality-tip">${r.tip}</div>
+          </div>
+        `;
+      }
+      html += '</div>';
+    }
+    div.innerHTML = html;
     results.appendChild(div);
   }
 
-  // Update thumbnail borders
-  const thumbs = document.querySelectorAll('#thumbnails img');
+  // Update thumbnail borders and add delete buttons for rejected
+  const wrappers = document.querySelectorAll('#thumbnails .thumb-wrapper');
   const imgEntries = Object.entries(images);
-  thumbs.forEach((img, i) => {
+  wrappers.forEach((wrapper, i) => {
     if (i < imgEntries.length) {
-      const status = imgEntries[i][1].status === 'accepted' ? 'quality-passed' : 'quality-failed';
+      const [imgId, info] = imgEntries[i];
+      const img = wrapper.querySelector('img');
+      const status = info.status === 'accepted' ? 'quality-passed' : 'quality-failed';
       img.className = status;
+      wrapper.dataset.imageId = imgId;
+
+      // Add delete button for rejected images
+      if (info.status === 'rejected' && !wrapper.querySelector('.delete-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'delete-btn';
+        btn.textContent = '\u00D7';
+        btn.title = 'Delete and retake';
+        btn.onclick = (e) => { e.stopPropagation(); deleteImage(imgId, wrapper); };
+        wrapper.appendChild(btn);
+      }
     }
   });
 }
@@ -244,6 +280,19 @@ function showCoverageResults(data) {
   } else {
     document.getElementById('submit-btn').textContent = 'Done!';
     document.getElementById('capture-subtitle').textContent = 'Quality and coverage passed!';
+  }
+}
+
+async function deleteImage(imageId, wrapper) {
+  if (!captureId) return;
+  try {
+    const r = await fetch(`/api/captures/${captureId}/images/${imageId}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Delete failed');
+    wrapper.remove();
+    currentPosition--;
+    updatePhotoCount();
+  } catch (e) {
+    alert('Failed to delete image: ' + e.message);
   }
 }
 

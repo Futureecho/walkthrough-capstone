@@ -108,6 +108,11 @@ async def get_capture_image(db: AsyncSession, image_id: str) -> CaptureImage | N
     return await db.get(CaptureImage, image_id)
 
 
+async def delete_capture_image(db: AsyncSession, image: CaptureImage) -> None:
+    await db.delete(image)
+    await db.commit()
+
+
 async def update_capture_image(db: AsyncSession, image: CaptureImage, **kwargs) -> CaptureImage:
     for k, v in kwargs.items():
         setattr(image, k, v)

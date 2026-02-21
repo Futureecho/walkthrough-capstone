@@ -56,6 +56,33 @@ async def upload_image(
     return {"id": img.id, "seq": seq, "file_path": orig_path, "thumbnail_path": thumb_path}
 
 
+@router.delete("/{capture_id}/images/{image_id}", status_code=200)
+async def delete_image(capture_id: str, image_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a rejected or unwanted image from a capture."""
+    cap = await crud.get_capture(db, capture_id)
+    if not cap:
+        raise HTTPException(404, "Capture not found")
+    img = await crud.get_capture_image(db, image_id)
+    if not img or img.capture_id != capture_id:
+        raise HTTPException(404, "Image not found in this capture")
+
+    # Delete files from disk
+    from pathlib import Path
+    for p in (img.file_path, img.thumbnail_path):
+        if p:
+            Path(p).unlink(missing_ok=True)
+
+    await crud.delete_capture_image(db, img)
+
+    await ws_manager.broadcast(cap.session_id, {
+        "event": "image_deleted",
+        "capture_id": capture_id,
+        "image_id": image_id,
+    })
+
+    return {"deleted": image_id}
+
+
 @router.post("/{capture_id}/submit")
 async def submit_capture(capture_id: str, db: AsyncSession = Depends(get_db)):
     """Trigger quality gate + coverage review for this capture."""
