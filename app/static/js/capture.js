@@ -14,6 +14,10 @@ let currentPosition = 0;
 let ws = null;
 let stream = null;
 
+// Ghost overlay state
+let ghostMap = {};      // orientation_hint → thumbnail_url
+let ghostVisible = true;
+
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
@@ -34,6 +38,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Create capture record
   await createCapture();
+
+  // Load ghost overlay for move-out sessions
+  await loadGhostOverlay();
 
   // Connect WebSocket
   connectWebSocket();
@@ -137,6 +144,7 @@ async function capturePhoto() {
     addThumbnail(data.thumbnail_path, data.seq, data.id);
     currentPosition++;
     updateGuideLabel();
+    updateGhostImage();
     updatePhotoCount();
   } catch (e) {
     alert('Upload failed: ' + e.message);
@@ -291,9 +299,77 @@ async function deleteImage(imageId, wrapper) {
     wrapper.remove();
     currentPosition--;
     updatePhotoCount();
+    updateGhostImage();
   } catch (e) {
     alert('Failed to delete image: ' + e.message);
   }
+}
+
+// ── Ghost overlay ────────────────────────────────────────
+
+async function loadGhostOverlay() {
+  if (!sessionId || !roomName) return;
+  try {
+    // Fetch session to get property_id and type
+    const sr = await fetch(`/api/sessions/${sessionId}`);
+    if (!sr.ok) return;
+    const sess = await sr.json();
+    if (sess.type !== 'move_out') return;
+
+    // Fetch reference images from the move-in session
+    const rr = await fetch(
+      `/api/captures/reference-images?property_id=${encodeURIComponent(sess.property_id)}&room=${encodeURIComponent(roomName)}`
+    );
+    if (!rr.ok) return;
+    const refs = await rr.json();
+    if (!refs.length) return;
+
+    // Build hint → url map
+    ghostMap = {};
+    refs.forEach(r => { ghostMap[r.orientation_hint] = r.thumbnail_url; });
+
+    // Create overlay image
+    const viewfinder = document.getElementById('viewfinder');
+    const img = document.createElement('img');
+    img.id = 'ghost-overlay';
+    img.alt = 'Reference overlay';
+    viewfinder.appendChild(img);
+
+    // Create toggle button
+    const btn = document.createElement('button');
+    btn.id = 'ghost-toggle';
+    btn.title = 'Toggle reference overlay';
+    btn.textContent = '\u{1F441}';
+    btn.addEventListener('click', toggleGhost);
+    viewfinder.appendChild(btn);
+
+    // Set initial ghost image
+    updateGhostImage();
+  } catch (e) {
+    // Ghost overlay is non-critical; fail silently
+  }
+}
+
+function updateGhostImage() {
+  const img = document.getElementById('ghost-overlay');
+  if (!img) return;
+  const hint = currentPosition < GUIDED_POSITIONS.length
+    ? GUIDED_POSITIONS[currentPosition] : null;
+  if (hint && ghostMap[hint]) {
+    img.src = ghostMap[hint];
+    img.style.display = '';
+  } else {
+    img.style.display = 'none';
+  }
+}
+
+function toggleGhost() {
+  const img = document.getElementById('ghost-overlay');
+  const btn = document.getElementById('ghost-toggle');
+  if (!img || !btn) return;
+  ghostVisible = !ghostVisible;
+  img.style.opacity = ghostVisible ? '0.15' : '0';
+  btn.classList.toggle('ghost-toggle-off', !ghostVisible);
 }
 
 // Cleanup on unload

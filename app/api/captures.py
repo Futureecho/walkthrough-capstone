@@ -13,6 +13,24 @@ from app.services.ws_manager import ws_manager
 router = APIRouter(prefix="/api/captures", tags=["captures"])
 
 
+@router.get("/reference-images")
+async def get_reference_images(
+    property_id: str,
+    room: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return move-in reference thumbnails for ghost overlay during move-out capture."""
+    images = await crud.get_reference_images(db, property_id, room)
+    return [
+        {
+            "orientation_hint": img.orientation_hint,
+            "thumbnail_url": "/" + img.thumbnail_path,
+        }
+        for img in images
+        if img.thumbnail_path
+    ]
+
+
 @router.post("", response_model=CaptureRead, status_code=201)
 async def create_capture(body: CaptureCreate, db: AsyncSession = Depends(get_db)):
     sess = await crud.get_session(db, body.session_id)

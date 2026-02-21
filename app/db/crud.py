@@ -11,6 +11,31 @@ from app.models import (
 )
 
 
+# ── Reference Images (ghost overlay) ────────────────────
+
+async def get_reference_images(
+    db: AsyncSession, property_id: str, room: str
+) -> list[CaptureImage]:
+    """Return move-in capture images for a property+room (most recent session)."""
+    result = await db.execute(
+        select(CaptureImage)
+        .join(Capture, CaptureImage.capture_id == Capture.id)
+        .join(Session, Capture.session_id == Session.id)
+        .where(
+            Session.property_id == property_id,
+            Session.type == "move_in",
+            Capture.room == room,
+        )
+        .order_by(Session.created_at.desc(), CaptureImage.seq)
+    )
+    images = list(result.scalars().all())
+    if not images:
+        return []
+    # Only return images from the most recent move-in session
+    first_capture_id = images[0].capture_id
+    return [img for img in images if img.capture_id == first_capture_id]
+
+
 # ── Property ──────────────────────────────────────────────
 
 async def create_property(db: AsyncSession, label: str, rooms: list[str]) -> Property:
