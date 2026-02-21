@@ -1,0 +1,36 @@
+scenarios:
+  - name: "Sharp well-lit photo"
+    input:
+      blur_score: 250.0
+      darkness_score: 128.0
+      sharpness_score: 90.0
+    rubric:
+      - check: "Image accepted"
+        field: "status"
+        condition: "equals"
+        value: "accepted"
+        points: 1.0
+
+  - name: "Very blurry photo"
+    input:
+      blur_score: 10.0
+      darkness_score: 128.0
+      sharpness_score: 90.0
+    rubric:
+      - check: "Image rejected"
+        field: "status"
+        condition: "equals"
+        value: "rejected"
+        points: 1.0
+
+  - name: "Borderline blur"
+    input:
+      blur_score: 95.0
+      darkness_score: 128.0
+      sharpness_score: 90.0
+    rubric:
+      - check: "Image marked borderline"
+        field: "status"
+        condition: "equals"
+        value: "borderline"
+        points: 1.0

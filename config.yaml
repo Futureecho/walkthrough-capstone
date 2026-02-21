@@ -1,0 +1,42 @@
+quality_gate:
+  blur_threshold: 100.0          # Laplacian variance
+  darkness_threshold: 40.0       # mean brightness 0-255
+  sharpness_threshold: 50.0      # Tenengrad variance
+  borderline_margin: 20.0        # within this margin of threshold → LLM judge
+
+coverage:
+  min_coverage_pct: 80.0
+  guided_positions:
+    - center-from-door
+    - center-opposite-wall
+    - corner-left-near
+    - corner-right-near
+    - corner-left-far
+    - corner-right-far
+    - ceiling
+    - floor
+
+comparison:
+  structural_diff_threshold: 0.15  # SSIM delta
+  min_candidate_confidence: 0.3
+  max_candidates_per_room: 20
+
+language_policy:
+  forbidden:
+    - damage confirmed
+    - damage detected
+    - tenant caused
+    - fault
+    - liable
+  required_hedging:
+    - candidate difference
+    - possible
+    - appears to
+    - may indicate
+
+image_store:
+  base_dir: data/images
+  thumbnail_size: [320, 240]
+
+database:
+  url: "sqlite+aiosqlite:///data/walkthrough.db"

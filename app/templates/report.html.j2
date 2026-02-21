@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walkthrough Report — {{ property.label }}</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; color: #1a1a1a; }
+  h1 { border-bottom: 2px solid #333; padding-bottom: .5rem; }
+  .session { margin: 1.5rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px; }
+  .session h3 { margin-top: 0; }
+  .room { margin: 1rem 0; padding: .75rem; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; }
+  .candidate { margin: .5rem 0; padding: .5rem; border-left: 3px solid #ffc107; background: #fff8e1; }
+  .candidate.confirmed { border-left-color: #dc3545; background: #fce4ec; }
+  .candidate.disagreed { border-left-color: #28a745; background: #e8f5e9; }
+  .disclaimer { margin-top: 2rem; padding: 1rem; background: #e3f2fd; border-radius: 4px; font-size: .85rem; }
+  .meta { color: #666; font-size: .85rem; }
+  img { max-width: 100%; border-radius: 4px; }
+  .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; margin: .5rem 0; }
+</style>
+</head>
+<body>
+<h1>Walkthrough Report</h1>
+<p><strong>Property:</strong> {{ property.label }}</p>
+<p><strong>Rooms:</strong> {{ property.rooms | join(', ') }}</p>
+<p class="meta">Generated: {{ now() if now is defined else "N/A" }} | Report ID: {{ property.id }}</p>
+
+{% for session in sessions %}
+<div class="session">
+  <h3>{{ session.type | replace('_', ' ') | title }} Session</h3>
+  <p class="meta">Tenant: {{ session.tenant_name or 'N/A' }} | Date: {{ session.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+  {% for capture in session.captures %}
+  <div class="room">
+    <h4>{{ capture.room }} — {{ capture.status }}</h4>
+    <div class="image-grid">
+      {% for img in capture.images %}
+      <img src="/{{ img.thumbnail_path }}" alt="Image {{ img.seq }}" loading="lazy">
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+{% if comparisons %}
+<h2>Comparison Results</h2>
+{% for comp in comparisons %}
+<div class="room">
+  <h4>{{ comp.room }} — {{ comp.status }}</h4>
+  {% for cand in comp.candidates %}
+  <div class="candidate {{ cand.tenant_response }}">
+    <p><strong>Candidate difference</strong> (confidence: {{ "%.0f" | format(cand.confidence * 100) }}%)</p>
+    {% if cand.reason_codes %}
+    <p class="meta">Indicators: {{ cand.reason_codes | join(', ') }}</p>
+    {% endif %}
+    {% if cand.tenant_response %}
+    <p>Tenant response: <strong>{{ cand.tenant_response }}</strong></p>
+    {% if cand.tenant_comment %}<p>Comment: {{ cand.tenant_comment }}</p>{% endif %}
+    {% else %}
+    <p class="meta">Awaiting tenant response</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="disclaimer">
+  <strong>Disclaimer:</strong> This report documents candidate differences identified through
+  automated image analysis. Results indicate possible areas of change and do not constitute
+  confirmed damage assessments. All findings should be verified through in-person inspection.
+  This system uses cautious language — "candidate difference" indicates an area that may
+  warrant further review, not a determination of fault or liability.
+</div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Walkthrough Capture</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <h1>Walkthrough Capture</h1>
+  <div class="subtitle">Move-in / Move-out Documentation</div>
+</div>
+
+<div class="container">
+  <!-- Property Selection -->
+  <div class="card" id="property-section">
+    <h2>Select Property</h2>
+    <select id="property-select">
+      <option value="">Loading properties...</option>
+    </select>
+    <div id="property-rooms" class="hidden">
+      <h3>Rooms</h3>
+      <ul class="room-list" id="room-list"></ul>
+    </div>
+  </div>
+
+  <!-- Session Creation -->
+  <div class="card hidden" id="session-section">
+    <h2>Start Session</h2>
+    <select id="session-type">
+      <option value="move_in">Move-In Walkthrough</option>
+      <option value="move_out">Move-Out Walkthrough</option>
+    </select>
+    <input type="text" id="tenant-name" placeholder="Tenant name (optional)">
+    <button class="btn btn-primary btn-block" id="start-session-btn">Start Session</button>
+  </div>
+
+  <!-- Active Session -->
+  <div class="card hidden" id="active-session">
+    <div class="flex-between">
+      <h2 id="session-label">Session Active</h2>
+      <span class="badge badge-info" id="session-type-badge"></span>
+    </div>
+    <p class="text-muted mt-1" id="session-tenant"></p>
+    <h3 class="mt-2">Rooms</h3>
+    <ul class="room-list" id="session-room-list"></ul>
+  </div>
+
+  <!-- Existing Sessions -->
+  <div class="card hidden" id="existing-sessions">
+    <h2>Previous Sessions</h2>
+    <div id="sessions-list"></div>
+  </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Capture Room</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <h1 id="room-title">Capturing Room</h1>
+  <div class="subtitle" id="capture-subtitle">Take 8 guided photos</div>
+</div>
+
+<div class="container">
+  <!-- Camera viewfinder -->
+  <div class="viewfinder" id="viewfinder">
+    <video id="camera" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <div class="guide-overlay" id="guide-overlay"></div>
+    <div class="guide-label" id="guide-label">center-from-door (1/8)</div>
+  </div>
+
+  <!-- Capture button -->
+  <button class="btn btn-primary btn-block mb-2" id="capture-btn">Capture Photo</button>
+
+  <!-- Status area -->
+  <div class="card" id="status-card">
+    <div class="flex-between mb-1">
+      <h3>Photos</h3>
+      <span id="photo-count">0 / 8</span>
+    </div>
+    <div class="image-grid" id="thumbnails"></div>
+  </div>
+
+  <!-- Quality results -->
+  <div class="card hidden" id="quality-card">
+    <h3>Quality Check</h3>
+    <div id="quality-results"></div>
+  </div>
+
+  <!-- Coverage info -->
+  <div class="card hidden" id="coverage-card">
+    <h3>Coverage</h3>
+    <div class="coverage-bar"><div class="fill" id="coverage-fill" style="width:0%"></div></div>
+    <p class="text-muted" id="coverage-text">0% coverage</p>
+    <div id="coverage-instructions" class="mt-1"></div>
+  </div>
+
+  <!-- Submit button -->
+  <button class="btn btn-success btn-block mt-2 hidden" id="submit-btn">Submit for Review</button>
+
+  <!-- Back link -->
+  <a href="/" class="btn btn-outline btn-block mt-2">Back to Property</a>
+</div>
+
+<script src="/static/js/capture.js"></script>
+</body>
+</html>

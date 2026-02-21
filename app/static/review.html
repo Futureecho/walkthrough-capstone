@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Coverage Review</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <h1>Coverage Review</h1>
+  <div class="subtitle">Review capture coverage and quality</div>
+</div>
+
+<div class="container">
+  <div class="card">
+    <h2>Session</h2>
+    <select id="session-select">
+      <option value="">Enter session ID in URL: ?session=...</option>
+    </select>
+  </div>
+
+  <div class="card hidden" id="review-content">
+    <h2 id="review-room">Room</h2>
+
+    <h3 class="mt-2">Quality Results</h3>
+    <div id="quality-summary"></div>
+
+    <h3 class="mt-2">Coverage</h3>
+    <div class="coverage-bar"><div class="fill" id="review-coverage-fill" style="width:0%"></div></div>
+    <p class="text-muted" id="review-coverage-text">0%</p>
+
+    <h3 class="mt-2">Captured Images</h3>
+    <div class="image-grid" id="review-images"></div>
+
+    <h3 class="mt-2">Guidance</h3>
+    <div id="review-guidance"></div>
+  </div>
+
+  <a href="/" class="btn btn-outline btn-block mt-2">Back</a>
+</div>
+
+<script src="/static/js/review.js"></script>
+</body>
+</html>
