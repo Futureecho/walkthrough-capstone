@@ -13,3 +13,4 @@ dist/
 .coverage
 htmlcov/
 test_*.jpg
+*.pem
