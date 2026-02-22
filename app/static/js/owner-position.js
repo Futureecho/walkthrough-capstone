@@ -259,20 +259,43 @@ function removeGhostOverlay() {
 
 function prepareRefData(url) {
   const img = new Image();
-  // Only set crossOrigin for non-blob URLs (server images need it, blob URLs break with it)
   if (!url.startsWith('blob:')) img.crossOrigin = 'anonymous';
   img.onload = () => {
-    alignCtx.drawImage(img, 0, 0, ALIGN_W, ALIGN_H);
-    const data = alignCtx.getImageData(0, 0, ALIGN_W, ALIGN_H);
-    refGray = toGrayscale(data);
-    goodFrames = 0;
-    startAlignment();
+    try {
+      alignCtx.drawImage(img, 0, 0, ALIGN_W, ALIGN_H);
+      const data = alignCtx.getImageData(0, 0, ALIGN_W, ALIGN_H);
+      refGray = toGrayscale(data);
+      goodFrames = 0;
+      startAlignment();
+      showAlignStatus('Alignment active');
+    } catch (e) {
+      showAlignStatus('Canvas error: ' + e.message);
+    }
+  };
+  img.onerror = () => {
+    showAlignStatus('Ref image failed to load');
   };
   img.src = url;
 }
 
+function showAlignStatus(msg) {
+  const viewfinder = document.getElementById('viewfinder');
+  let el = viewfinder.querySelector('#align-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'align-status';
+    el.style.cssText = 'position:absolute;top:.5rem;right:.5rem;background:rgba(0,0,0,.7);color:#0f0;padding:.2rem .4rem;border-radius:4px;font-size:.7rem;z-index:12';
+    viewfinder.appendChild(el);
+  }
+  el.textContent = msg;
+  // Auto-hide after 3s
+  setTimeout(() => { if (el.textContent === msg) el.remove(); }, 3000);
+}
+
 function startAlignment() {
-  stopAlignment();
+  // Clear any existing interval but keep refGray (it was just set by caller)
+  if (alignInterval) clearInterval(alignInterval);
+  goodFrames = 0;
   alignInterval = setInterval(compareFrame, 300);
 }
 
