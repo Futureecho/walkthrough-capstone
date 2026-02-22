@@ -577,7 +577,8 @@ async function show360Setup() {
       </div>
       <p class="text-muted" style="font-size:.85rem;margin-bottom:1rem">No position setup needed — sectors are determined automatically by compass heading.</p>
     </div>
-    <button class="btn btn-primary btn-block" id="back-360-btn">Done</button>
+    <button class="btn btn-primary btn-block" id="try-360-btn">Try 360° Capture</button>
+    <a href="/owner/properties?property=${propertyId}" class="btn btn-outline btn-block mt-1">Back to Property</a>
   `;
 
   // Back button in header
@@ -585,8 +586,8 @@ async function show360Setup() {
     window.location.href = `/owner/properties?property=${propertyId}`;
   });
 
-  document.getElementById('back-360-btn').addEventListener('click', () => {
-    window.location.href = `/owner/properties?property=${propertyId}`;
+  document.getElementById('try-360-btn').addEventListener('click', () => {
+    window.location.href = `/capture/360?room=${encodeURIComponent(roomName)}&property=${propertyId}`;
   });
 }
 

@@ -9,6 +9,7 @@ let sessionId = null;
 let roomName = null;
 let captureId = null;
 let stream = null;
+let previewMode = false; // owner preview — no uploads
 
 // Sector state: null = uncaptured, 'captured' = done
 let sectors = new Array(SECTOR_COUNT).fill(null);
@@ -45,17 +46,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   roomName = params.get('room');
   tenantToken = params.get('token');
 
-  if (!sessionId || !roomName) {
-    alert('Missing session or room parameter');
-    window.location.href = '/';
-    return;
-  }
+  // Preview mode when no session (owner testing the capture experience)
+  previewMode = !sessionId;
 
-  document.getElementById('room-title').textContent = `${roomName} — 360°`;
+  document.getElementById('room-title').textContent = `${roomName || 'Room'} — 360°`;
 
-  // Fix back links for tenant flow
+  // Fix back links
   if (tenantToken) {
     document.getElementById('back-link-bottom').href = `/inspect/${tenantToken}`;
+  } else {
+    const propId = params.get('property');
+    if (propId) {
+      document.getElementById('back-link-bottom').href = `/owner/properties?property=${propId}`;
+    }
   }
 
   // Quality check canvas (offscreen)
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   qualityCtx = qualityCanvas.getContext('2d', { willReadFrequently: true });
 
   await startCamera();
-  await createCapture();
+  if (!previewMode) await createCapture();
   initCompass();
   drawPanoStrip();
 
@@ -279,7 +282,8 @@ function angleDiff(a, b) {
 
 // ── Capture logic ─────────────────────────────────────────
 async function doCapture(sectorIndex) {
-  if (!stream || !captureId) return;
+  if (!stream) return;
+  if (!previewMode && !captureId) return;
   if (sectors[sectorIndex]) return; // Already done
 
   const video = document.getElementById('camera');
@@ -307,25 +311,27 @@ async function doCapture(sectorIndex) {
   updateProgress();
   flashViewfinder();
 
-  // Convert to blob and upload
-  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-  const hint = `sector_${sectorIndex}`;
+  // Upload (skip in preview mode)
+  if (!previewMode) {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    const hint = `sector_${sectorIndex}`;
 
-  const form = new FormData();
-  form.append('file', blob, `sector_${sectorIndex}.jpg`);
-  form.append('orientation_hint', hint);
-  if (tenantToken) form.append('token', tenantToken);
+    const form = new FormData();
+    form.append('file', blob, `sector_${sectorIndex}.jpg`);
+    form.append('orientation_hint', hint);
+    if (tenantToken) form.append('token', tenantToken);
 
-  try {
-    await fetch(`/api/captures/${captureId}/images${tokenParam()}`, {
-      method: 'POST',
-      body: form,
-    });
-  } catch (e) {
-    // Upload failed — un-mark sector
-    sectors[sectorIndex] = null;
-    drawPanoStrip();
-    updateProgress();
+    try {
+      await fetch(`/api/captures/${captureId}/images${tokenParam()}`, {
+        method: 'POST',
+        body: form,
+      });
+    } catch (e) {
+      // Upload failed — un-mark sector
+      sectors[sectorIndex] = null;
+      drawPanoStrip();
+      updateProgress();
+    }
   }
 
   updateGapGuidance();
@@ -354,7 +360,7 @@ function updateProgress() {
 
   const doneBtn = document.getElementById('done-btn');
   doneBtn.textContent = `Done — ${done}/${SECTOR_COUNT} captured`;
-  doneBtn.disabled = done < MIN_SECTORS_DONE;
+  doneBtn.disabled = previewMode ? false : done < MIN_SECTORS_DONE;
 }
 
 function updateGapGuidance() {
@@ -419,11 +425,13 @@ async function finishCapture() {
     }
   }
 
-  // Navigate back to room list
+  // Navigate back
   if (tenantToken) {
     window.location.href = `/inspect/${tenantToken}`;
   } else {
-    window.location.href = '/';
+    const params = new URLSearchParams(window.location.search);
+    const propId = params.get('property');
+    window.location.href = propId ? `/owner/properties?property=${propId}` : '/';
   }
 }
 
