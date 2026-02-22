@@ -492,3 +492,27 @@ textarea {
 .flex-wrap { flex-wrap: wrap; }
 .gap-1 { gap: .5rem; }
 .hidden { display: none !important; }
+
+/* Back button */
+.btn-back {
+  background: rgba(255,255,255,.08);
+  color: var(--text);
+  padding: .4rem .7rem;
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+.btn-back:hover { background: rgba(255,255,255,.15); }
+
+/* Mobile: stack dashboard nav below logo */
+@media (max-width: 600px) {
+  .header .flex-between { flex-wrap: wrap; }
+  .header .nav-group {
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: .5rem;
+    gap: .4rem;
+  }
+  .header .nav-group .btn { padding: .4rem .6rem; font-size: .85rem; }
+}

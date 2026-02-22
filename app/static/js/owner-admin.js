@@ -18,11 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await loadUsers();
-
-  document.getElementById('logout-btn').addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/owner/login';
-  });
 });
 
 async function loadUsers() {
