@@ -300,9 +300,7 @@ function compareFrame() {
   if (score >= ALIGN_THRESHOLD) {
     goodFrames++;
     if (goodFrames >= AUTO_CAPTURE_FRAMES) {
-      // Auto-capture!
-      stopAlignment();
-      capturePhoto();
+      simulateLock();
     }
   } else {
     goodFrames = 0;
@@ -364,6 +362,51 @@ function hideAlignmentRing() {
   viewfinder.style.boxShadow = '';
   const label = viewfinder.querySelector('#align-score');
   if (label) label.remove();
+  const lockLabel = viewfinder.querySelector('#lock-label');
+  if (lockLabel) lockLabel.remove();
+}
+
+function simulateLock() {
+  // Pause alignment, freeze frame briefly, show lock indicator, then resume
+  if (alignInterval) clearInterval(alignInterval);
+  goodFrames = 0;
+
+  const video = document.getElementById('camera');
+  const frozen = document.getElementById('frozen-frame');
+  const viewfinder = document.getElementById('viewfinder');
+
+  // Freeze the current frame in the viewfinder
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  frozen.src = canvas.toDataURL('image/jpeg', 0.92);
+  frozen.style.display = 'block';
+  video.style.display = 'none';
+
+  // Solid green glow
+  viewfinder.style.boxShadow = 'inset 0 0 0 4px rgba(0,214,143,0.9), 0 0 20px rgba(0,214,143,0.6)';
+
+  // Show lock label
+  let lockLabel = viewfinder.querySelector('#lock-label');
+  if (!lockLabel) {
+    lockLabel = document.createElement('div');
+    lockLabel.id = 'lock-label';
+    lockLabel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#00d68f;padding:.4rem .8rem;border-radius:6px;font-size:1rem;font-weight:600;z-index:12;white-space:nowrap';
+    viewfinder.appendChild(lockLabel);
+  }
+  lockLabel.textContent = 'Alignment Lock';
+
+  // After 1.5s, resume live feed with ghost still active
+  setTimeout(() => {
+    lockLabel.remove();
+    frozen.style.display = 'none';
+    video.style.display = '';
+    // Resume alignment checking
+    if (ghostActive && refGray) {
+      alignInterval = setInterval(compareFrame, 300);
+    }
+  }, 1500);
 }
 
 // ── Save / Discard ───────────────────────────────────────
