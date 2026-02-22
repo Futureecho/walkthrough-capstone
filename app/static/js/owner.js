@@ -142,7 +142,7 @@ async function loadScheduleProperties() {
   }
 }
 
-function selectScheduleProperty(prop) {
+async function selectScheduleProperty(prop) {
   _schedulePropertyId = prop.id;
   document.getElementById('schedule-prop-label').textContent = prop.label;
   document.getElementById('schedule-prop-addr').textContent = prop.address || '';
@@ -154,6 +154,23 @@ function selectScheduleProperty(prop) {
   document.getElementById('sched-tenant2').value = '';
   document.getElementById('sched-days').value = '7';
   document.getElementById('sched-type').value = 'move_in';
+
+  // Fetch room modes summary
+  const modesDiv = document.getElementById('schedule-room-modes');
+  modesDiv.textContent = '';
+  try {
+    const r = await fetch(`/api/owner/properties/${prop.id}`);
+    if (r.ok) {
+      const detail = await r.json();
+      const templates = detail.room_templates || [];
+      if (templates.length > 0) {
+        modesDiv.textContent = templates.map(rt => {
+          const mode = rt.capture_mode === '360' ? '360°' : 'Traditional';
+          return `${rt.name}: ${mode}`;
+        }).join(' · ');
+      }
+    }
+  } catch (e) { /* non-critical */ }
 }
 
 function showSchedulePicker() {

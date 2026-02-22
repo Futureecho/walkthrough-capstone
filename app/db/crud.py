@@ -43,11 +43,13 @@ async def update_company_settings(db: AsyncSession, settings: CompanySettings, *
 
 async def create_room_template(
     db: AsyncSession, property_id: str, name: str,
-    display_order: int = 0, positions: list | None = None
+    display_order: int = 0, positions: list | None = None,
+    capture_mode: str = "traditional",
 ) -> RoomTemplate:
     rt = RoomTemplate(
         property_id=property_id, name=name,
         display_order=display_order, positions=positions or [],
+        capture_mode=capture_mode,
     )
     db.add(rt)
     await db.commit()

@@ -74,6 +74,7 @@ async def get_tenant_session(token: str = Query(...)):
                     "name": rt.name,
                     "display_order": rt.display_order,
                     "positions": rt.positions,
+                    "capture_mode": rt.capture_mode,
                 }
                 for rt in room_templates
             ],
@@ -104,6 +105,7 @@ async def get_tenant_rooms(token: str = Query(...)):
                 "name": rt.name,
                 "display_order": rt.display_order,
                 "positions": rt.positions,
+                "capture_mode": rt.capture_mode,
             }
             for rt in room_templates
         ]

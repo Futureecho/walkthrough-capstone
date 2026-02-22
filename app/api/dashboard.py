@@ -140,6 +140,7 @@ async def get_owner_property(
                 "name": rt.name,
                 "display_order": rt.display_order,
                 "positions": rt.positions,
+                "capture_mode": rt.capture_mode,
                 "created_at": rt.created_at.isoformat(),
                 "reference_image_count": len(rt.reference_images) if rt.reference_images else 0,
                 "reference_images": [

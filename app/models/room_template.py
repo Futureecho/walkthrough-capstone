@@ -13,6 +13,7 @@ class RoomTemplate(Base, ULIDMixin):
     name: Mapped[str] = mapped_column(String(255))
     display_order: Mapped[int] = mapped_column(Integer, default=0)
     positions: Mapped[list] = mapped_column(JSON, default=list)
+    capture_mode: Mapped[str] = mapped_column(String(20), default="traditional")
 
     property = relationship("Property", back_populates="room_templates")
     reference_images = relationship(

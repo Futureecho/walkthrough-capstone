@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>360° Capture - Walkthru-X</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/verentyx-icon-32.png">
+<link rel="apple-touch-icon" href="/static/images/verentyx-icon-180.png">
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
+    <div style="flex:1">
+      <h1 id="room-title">360° Capture</h1>
+      <div class="subtitle" id="capture-subtitle">0 of 12 sectors</div>
+    </div>
+    <a href="/" id="back-link" class="btn-back">&#8249;</a>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Compass permission (iOS) -->
+  <div class="card hidden" id="compass-card">
+    <p class="text-muted mb-1">This mode uses your device compass to track which direction you're facing.</p>
+    <button class="btn btn-primary btn-block" id="compass-btn">Enable Compass</button>
+  </div>
+
+  <!-- Camera viewfinder -->
+  <div class="viewfinder" id="viewfinder">
+    <video id="camera" autoplay playsinline muted></video>
+    <canvas id="canvas" style="display:none"></canvas>
+    <div class="guide-label" id="heading-label">Heading: --° · Sector: --</div>
+  </div>
+
+  <!-- Panoramic strip -->
+  <div class="pano-strip-container">
+    <canvas id="pano-strip" width="720" height="48"></canvas>
+  </div>
+
+  <!-- Gap guidance -->
+  <p class="text-muted text-center" id="gap-guide" style="margin:.5rem 0;font-size:.9rem">Pan slowly around the room</p>
+
+  <!-- Manual capture button -->
+  <button class="btn btn-primary btn-block" id="capture-btn">Capture Sector</button>
+
+  <!-- Done button -->
+  <button class="btn btn-success btn-block" id="done-btn" disabled style="margin-top:.5rem">Done — 0/12 captured</button>
+
+  <!-- Back link -->
+  <a href="/" class="btn btn-outline btn-block mt-2" id="back-link-bottom">Back to Rooms</a>
+</div>
+
+<script src="/static/js/capture-360.js"></script>
+</body>
+</html>

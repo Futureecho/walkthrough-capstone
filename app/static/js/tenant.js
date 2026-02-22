@@ -86,18 +86,21 @@ function renderSession() {
       : status === 'needs_coverage' ? 'needs_coverage'
       : 'pending';
 
+    const is360 = rt.capture_mode === '360';
+    const modeInfo = is360 ? '360° sweep' : `${rt.positions.length} position(s)`;
+
     li.innerHTML = `
       <div>
         <strong>${rt.name}</strong>
-        <br><span class="text-muted" style="font-size:.85rem">${rt.positions.length} position(s)</span>
+        <br><span class="text-muted" style="font-size:.85rem">${modeInfo}</span>
       </div>
       <div class="room-status ${statusDot}"></div>
     `;
 
     if (status !== 'passed') {
       li.addEventListener('click', () => {
-        // Navigate to capture page with token + room
-        window.location.href = `/capture?token=${encodeURIComponent(tenantToken)}&session=${sessionData.session_id}&room=${encodeURIComponent(rt.name)}`;
+        const base = is360 ? '/capture/360' : '/capture';
+        window.location.href = `${base}?token=${encodeURIComponent(tenantToken)}&session=${sessionData.session_id}&room=${encodeURIComponent(rt.name)}`;
       });
     }
     roomList.appendChild(li);

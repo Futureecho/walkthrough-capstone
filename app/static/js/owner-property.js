@@ -119,62 +119,102 @@ function renderRoomTemplates(templates) {
     header.querySelector('[data-action="delete-room"]').addEventListener('click', () => deleteRoom(rt.id, rt.name));
     card.appendChild(header);
 
-    // Build ref image map from inline data
-    const refMap = {};
-    (rt.reference_images || []).forEach(img => { refMap[img.position_hint] = img; });
-
-    // Position rows
-    const positions = rt.positions || [];
-    if (positions.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'text-muted';
-      empty.style.fontSize = '.85rem';
-      empty.textContent = 'No positions yet';
-      card.appendChild(empty);
-    } else {
-      positions.forEach((pos, idx) => {
-        const hint = pos.hint || pos.label;
-        const ref = refMap[hint];
-        const row = document.createElement('div');
-        row.className = 'flex-between';
-        row.style.cssText = 'padding:.4rem 0;border-bottom:1px solid var(--border);align-items:center';
-
-        const left = document.createElement('div');
-        left.className = 'flex gap-1';
-        left.style.alignItems = 'center';
-
-        if (ref && ref.thumbnail_url) {
-          left.innerHTML = `<img src="${esc(ref.thumbnail_url)}" style="width:48px;height:36px;object-fit:cover;border-radius:3px;border:1px solid var(--primary);flex-shrink:0">`;
-        } else {
-          left.innerHTML = `<div style="width:48px;height:36px;border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--text-muted);flex-shrink:0">No ref</div>`;
-        }
-        const label = document.createElement('span');
-        label.style.fontSize = '.9rem';
-        label.textContent = pos.label || hint;
-        left.appendChild(label);
-
-        const right = document.createElement('div');
-        right.className = 'flex gap-1';
-        right.innerHTML = `
-          <button class="btn btn-ghost" style="padding:.2rem .5rem;font-size:.8rem" data-action="edit">Edit</button>
-          <button class="btn btn-danger" style="padding:.2rem .5rem;font-size:.8rem" data-action="delete">Delete</button>
-        `;
-        right.querySelector('[data-action="edit"]').addEventListener('click', () => editPosition(rt.id, idx));
-        right.querySelector('[data-action="delete"]').addEventListener('click', () => deletePosition(rt.id, idx, hint));
-
-        row.appendChild(left);
-        row.appendChild(right);
-        card.appendChild(row);
+    // Capture mode selector
+    const modeRow = document.createElement('div');
+    modeRow.className = 'flex-between mb-1';
+    modeRow.style.cssText = 'padding:.4rem 0';
+    const modeLabel = document.createElement('span');
+    modeLabel.className = 'text-muted';
+    modeLabel.style.fontSize = '.85rem';
+    modeLabel.textContent = 'Capture mode:';
+    const modeSelect = document.createElement('select');
+    modeSelect.style.cssText = 'width:auto;margin:0;padding:.2rem .5rem;font-size:.85rem';
+    modeSelect.innerHTML = `
+      <option value="traditional"${rt.capture_mode !== '360' ? ' selected' : ''}>Traditional</option>
+      <option value="360"${rt.capture_mode === '360' ? ' selected' : ''}>360°</option>
+    `;
+    modeSelect.addEventListener('change', async () => {
+      const r = await fetch(`/api/owner/rooms/${rt.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ capture_mode: modeSelect.value }),
       });
-    }
+      if (r.ok) showDetail(currentPropertyId);
+      else alert('Failed to update capture mode');
+    });
+    modeRow.appendChild(modeLabel);
+    modeRow.appendChild(modeSelect);
+    card.appendChild(modeRow);
 
-    // + Add Position button
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn btn-outline';
-    addBtn.style.cssText = 'padding:.3rem .6rem;font-size:.85rem;margin-top:.5rem;width:100%';
-    addBtn.textContent = '+ Add Position';
-    addBtn.addEventListener('click', () => addPosition(rt.id));
-    card.appendChild(addBtn);
+    const is360 = rt.capture_mode === '360';
+
+    if (is360) {
+      // 360 mode — show sector info instead of positions
+      const note = document.createElement('p');
+      note.className = 'text-muted';
+      note.style.cssText = 'font-size:.85rem;padding:.4rem 0';
+      note.textContent = '360° panoramic — 12 sectors captured automatically';
+      card.appendChild(note);
+    } else {
+      // Traditional mode — show positions
+
+      // Build ref image map from inline data
+      const refMap = {};
+      (rt.reference_images || []).forEach(img => { refMap[img.position_hint] = img; });
+
+      // Position rows
+      const positions = rt.positions || [];
+      if (positions.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'text-muted';
+        empty.style.fontSize = '.85rem';
+        empty.textContent = 'No positions yet';
+        card.appendChild(empty);
+      } else {
+        positions.forEach((pos, idx) => {
+          const hint = pos.hint || pos.label;
+          const ref = refMap[hint];
+          const row = document.createElement('div');
+          row.className = 'flex-between';
+          row.style.cssText = 'padding:.4rem 0;border-bottom:1px solid var(--border);align-items:center';
+
+          const left = document.createElement('div');
+          left.className = 'flex gap-1';
+          left.style.alignItems = 'center';
+
+          if (ref && ref.thumbnail_url) {
+            left.innerHTML = `<img src="${esc(ref.thumbnail_url)}" style="width:48px;height:36px;object-fit:cover;border-radius:3px;border:1px solid var(--primary);flex-shrink:0">`;
+          } else {
+            left.innerHTML = `<div style="width:48px;height:36px;border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--text-muted);flex-shrink:0">No ref</div>`;
+          }
+          const label = document.createElement('span');
+          label.style.fontSize = '.9rem';
+          label.textContent = pos.label || hint;
+          left.appendChild(label);
+
+          const right = document.createElement('div');
+          right.className = 'flex gap-1';
+          right.innerHTML = `
+            <button class="btn btn-ghost" style="padding:.2rem .5rem;font-size:.8rem" data-action="edit">Edit</button>
+            <button class="btn btn-danger" style="padding:.2rem .5rem;font-size:.8rem" data-action="delete">Delete</button>
+          `;
+          right.querySelector('[data-action="edit"]').addEventListener('click', () => editPosition(rt.id, idx));
+          right.querySelector('[data-action="delete"]').addEventListener('click', () => deletePosition(rt.id, idx, hint));
+
+          row.appendChild(left);
+          row.appendChild(right);
+          card.appendChild(row);
+        });
+      }
+
+      // + Add Position button
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-outline';
+      addBtn.style.cssText = 'padding:.3rem .6rem;font-size:.85rem;margin-top:.5rem;width:100%';
+      addBtn.textContent = '+ Add Position';
+      addBtn.addEventListener('click', () => addPosition(rt.id));
+      card.appendChild(addBtn);
+    }
 
     div.appendChild(card);
   });

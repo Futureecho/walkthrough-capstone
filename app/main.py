@@ -147,6 +147,11 @@ async def capture_page():
     return FileResponse(str(_static_dir / "capture.html"))
 
 
+@app.get("/capture/360")
+async def capture_360_page():
+    return FileResponse(str(_static_dir / "capture-360.html"))
+
+
 @app.get("/review")
 async def review_page():
     return FileResponse(str(_static_dir / "review.html"))

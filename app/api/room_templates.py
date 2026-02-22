@@ -28,7 +28,10 @@ async def create_room(
         raise HTTPException(404, "Property not found")
 
     positions = [p.model_dump() for p in body.positions]
-    rt = await crud.create_room_template(db, property_id, body.name, body.display_order, positions)
+    rt = await crud.create_room_template(
+        db, property_id, body.name, body.display_order, positions,
+        capture_mode=body.capture_mode,
+    )
     return RoomTemplateRead.model_validate(rt)
 
 
@@ -64,6 +67,8 @@ async def update_room(
         updates["display_order"] = body.display_order
     if body.positions is not None:
         updates["positions"] = [p.model_dump() for p in body.positions]
+    if body.capture_mode is not None:
+        updates["capture_mode"] = body.capture_mode
 
     if updates:
         rt = await crud.update_room_template(db, rt, **updates)

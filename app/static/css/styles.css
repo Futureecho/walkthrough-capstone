@@ -493,6 +493,20 @@ textarea {
 .gap-1 { gap: .5rem; }
 .hidden { display: none !important; }
 
+/* 360 panoramic strip */
+.pano-strip-container {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: .75rem;
+}
+.pano-strip-container canvas {
+  display: block;
+  width: 100%;
+  height: 48px;
+}
+
 /* Back button */
 .btn-back {
   background: rgba(255,255,255,.08);
