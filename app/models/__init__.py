@@ -16,6 +16,7 @@ from app.models.annotation import Annotation
 from app.models.comparison import Comparison
 from app.models.candidate import Candidate
 from app.models.tenant_link import TenantLink
+from app.models.reference_image import ReferenceImage
 
 # Auth models (central auth DB)
 from app.models.auth_models import AuthBase, Company, User, UserSession, PasswordReset, Invite, Referral
@@ -24,7 +25,7 @@ __all__ = [
     # Tenant
     "Base", "CompanySettings", "Property", "RoomTemplate",
     "Session", "Capture", "CaptureImage", "Annotation", "Comparison",
-    "Candidate", "TenantLink",
+    "Candidate", "TenantLink", "ReferenceImage",
     # Auth
     "AuthBase", "Company", "User", "UserSession", "PasswordReset", "Invite", "Referral",
 ]

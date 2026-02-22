@@ -19,15 +19,37 @@ router = APIRouter(prefix="/api/captures", tags=["captures"])
 async def get_reference_images(
     property_id: str,
     room: str,
+    room_template_id: str = Query(default=""),
     auth: AuthContext = Depends(require_auth_or_tenant),
     db: AsyncSession = Depends(get_company_db_flexible),
 ):
-    """Return move-in reference thumbnails for ghost overlay during move-out capture."""
-    images = await crud.get_reference_images(db, property_id, room)
+    """Return reference thumbnails for ghost overlay.
+
+    Priority:
+    1. Owner reference images for the room template (all session types)
+    2. Most recent move-in captures (move-out fallback)
+    """
+    # Try owner reference images first
+    if room_template_id:
+        owner_refs = await crud.list_reference_images(db, room_template_id)
+        if owner_refs:
+            return [
+                {
+                    "orientation_hint": img.position_hint,
+                    "thumbnail_url": "/" + img.thumbnail_path,
+                    "source": "owner",
+                }
+                for img in owner_refs
+                if img.thumbnail_path
+            ]
+
+    # Fallback: move-in capture images
+    images = await crud.get_movein_reference_images(db, property_id, room)
     return [
         {
             "orientation_hint": img.orientation_hint,
             "thumbnail_url": "/" + img.thumbnail_path,
+            "source": "move_in",
         }
         for img in images
         if img.thumbnail_path

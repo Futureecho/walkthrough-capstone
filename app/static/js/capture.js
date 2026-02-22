@@ -27,6 +27,7 @@ let pendingRetakes = [];      // position indices that need retaking
 // Ghost overlay state
 let ghostMap = {};      // orientation_hint → thumbnail_url
 let ghostVisible = true;
+let roomTemplateId = null; // cached from room template lookup
 
 // Helper: append token query param for tenant auth
 function tokenParam(sep = '?') {
@@ -86,8 +87,11 @@ async function loadRoomTemplatePositions() {
 
     // Find matching room template by name
     const template = rooms.find(rt => rt.name === roomName);
-    if (template && template.positions && template.positions.length > 0) {
-      guidedPositions = template.positions.map(p => p.hint || p.label);
+    if (template) {
+      roomTemplateId = template.id;
+      if (template.positions && template.positions.length > 0) {
+        guidedPositions = template.positions.map(p => p.hint || p.label);
+      }
     }
   } catch (e) {
     // Fall back to defaults
@@ -533,16 +537,16 @@ async function deleteImage(imageId, wrapper) {
 async function loadGhostOverlay() {
   if (!sessionId || !roomName) return;
   try {
-    // Fetch session to get property_id and type
+    // Fetch session to get property_id
     const sr = await fetch(`/api/sessions/${sessionId}${tokenParam()}`);
     if (!sr.ok) return;
     const sess = await sr.json();
-    if (sess.type !== 'move_out') return;
 
-    // Fetch reference images from the move-in session
-    const rr = await fetch(
-      `/api/captures/reference-images?property_id=${encodeURIComponent(sess.property_id)}&room=${encodeURIComponent(roomName)}${tokenParam('&')}`
-    );
+    // Fetch reference images (owner refs for all types, move-in fallback for move-out)
+    let url = `/api/captures/reference-images?property_id=${encodeURIComponent(sess.property_id)}&room=${encodeURIComponent(roomName)}`;
+    if (roomTemplateId) url += `&room_template_id=${encodeURIComponent(roomTemplateId)}`;
+    url += tokenParam('&');
+    const rr = await fetch(url);
     if (!rr.ok) return;
     const refs = await rr.json();
     if (!refs.length) return;

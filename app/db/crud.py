@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import (
     CompanySettings, Property, RoomTemplate, Session,
     Capture, CaptureImage, Annotation, Comparison, Candidate,
-    TenantLink,
+    TenantLink, ReferenceImage,
 )
 
 
@@ -126,9 +126,62 @@ async def get_expired_active_links(db: AsyncSession) -> list[TenantLink]:
     return list(result.scalars().all())
 
 
-# ── Reference Images (ghost overlay) ────────────────────
+# ── Owner Reference Images ────────────────────────────────
 
-async def get_reference_images(
+async def create_reference_image(
+    db: AsyncSession, room_template_id: str, position_hint: str,
+    seq: int, file_path: str, thumbnail_path: str = "",
+) -> ReferenceImage:
+    img = ReferenceImage(
+        room_template_id=room_template_id, position_hint=position_hint,
+        seq=seq, file_path=file_path, thumbnail_path=thumbnail_path,
+    )
+    db.add(img)
+    await db.commit()
+    await db.refresh(img)
+    return img
+
+
+async def list_reference_images(db: AsyncSession, room_template_id: str) -> list[ReferenceImage]:
+    result = await db.execute(
+        select(ReferenceImage)
+        .where(ReferenceImage.room_template_id == room_template_id)
+        .order_by(ReferenceImage.seq)
+    )
+    return list(result.scalars().all())
+
+
+async def get_reference_image_by_id(db: AsyncSession, image_id: str) -> ReferenceImage | None:
+    return await db.get(ReferenceImage, image_id)
+
+
+async def get_reference_image_by_position(
+    db: AsyncSession, room_template_id: str, position_hint: str,
+) -> ReferenceImage | None:
+    result = await db.execute(
+        select(ReferenceImage).where(
+            ReferenceImage.room_template_id == room_template_id,
+            ReferenceImage.position_hint == position_hint,
+        )
+    )
+    return result.scalars().first()
+
+
+async def delete_reference_image(db: AsyncSession, img: ReferenceImage) -> None:
+    await db.delete(img)
+    await db.commit()
+
+
+async def count_reference_images(db: AsyncSession, room_template_id: str) -> int:
+    result = await db.execute(
+        select(ReferenceImage).where(ReferenceImage.room_template_id == room_template_id)
+    )
+    return len(result.scalars().all())
+
+
+# ── Move-in Reference Images (ghost overlay) ─────────────
+
+async def get_movein_reference_images(
     db: AsyncSession, property_id: str, room: str
 ) -> list[CaptureImage]:
     """Return move-in capture images for a property+room (most recent session)."""

@@ -15,3 +15,7 @@ class RoomTemplate(Base, ULIDMixin):
     positions: Mapped[list] = mapped_column(JSON, default=list)
 
     property = relationship("Property", back_populates="room_templates")
+    reference_images = relationship(
+        "ReferenceImage", back_populates="room_template",
+        lazy="selectin", cascade="all, delete-orphan",
+    )

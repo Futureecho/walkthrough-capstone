@@ -10,6 +10,7 @@ from app.schemas.candidate import CandidateRead, CandidateResponse, CandidateOwn
 from app.schemas.owner_settings import CompanySettingsRead, CompanySettingsUpdate
 from app.schemas.room_template import RoomTemplateCreate, RoomTemplateRead, RoomTemplateUpdate
 from app.schemas.tenant_link import TenantLinkCreate, TenantLinkRead
+from app.schemas.reference_image import ReferenceImageRead
 from app.schemas.ws_messages import WSMessage
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
     "CompanySettingsRead", "CompanySettingsUpdate",
     "RoomTemplateCreate", "RoomTemplateRead", "RoomTemplateUpdate",
     "TenantLinkCreate", "TenantLinkRead",
+    "ReferenceImageRead",
     "WSMessage",
 ]

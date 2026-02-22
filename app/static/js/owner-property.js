@@ -99,15 +99,21 @@ function renderRoomTemplates(templates) {
     el.className = 'room-item';
     el.style.flexWrap = 'wrap';
     const posLabels = (rt.positions || []).map(p => p.label || p.hint).join(', ');
+    const refCount = rt.reference_image_count || 0;
+    const refBadge = refCount > 0
+      ? `<span class="text-muted" style="font-size:.75rem;margin-left:.5rem">${refCount} ref photo${refCount !== 1 ? 's' : ''}</span>`
+      : '';
     el.innerHTML = `
       <div style="flex:1;min-width:0">
-        <strong>${rt.name}</strong>
+        <strong>${rt.name}</strong>${refBadge}
         <br><span class="text-muted" style="font-size:.85rem">${posLabels || 'No positions'}</span>
       </div>
       <div class="flex gap-1">
+        <button class="btn btn-outline ref-photos-btn" style="padding:.2rem .5rem;font-size:.8rem" data-room-id="${rt.id}">Ref Photos</button>
         <button class="btn btn-outline edit-room-btn" style="padding:.2rem .5rem;font-size:.8rem" data-room-id="${rt.id}">Edit</button>
         <button class="btn btn-danger delete-room-btn" style="padding:.2rem .5rem;font-size:.8rem" data-room-id="${rt.id}">Delete</button>
       </div>
+      <div id="ref-panel-${rt.id}" class="hidden" style="width:100%;margin-top:.5rem"></div>
     `;
     el.querySelector('.delete-room-btn').addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -118,6 +124,10 @@ function renderRoomTemplates(templates) {
     el.querySelector('.edit-room-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       showEditForm(el, rt);
+    });
+    el.querySelector('.ref-photos-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleRefPhotos(rt);
     });
     div.appendChild(el);
   });
@@ -216,5 +226,123 @@ async function addRoomTemplate() {
   document.getElementById('new-room-name').value = '';
   document.getElementById('new-room-positions').innerHTML = '';
   showDetail(currentPropertyId);
+}
+
+
+// ── Reference Photos ─────────────────────────────────────
+
+async function toggleRefPhotos(rt) {
+  const panel = document.getElementById(`ref-panel-${rt.id}`);
+  if (!panel) return;
+
+  // Toggle visibility
+  if (!panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+  panel.innerHTML = '<p class="text-muted" style="font-size:.85rem">Loading...</p>';
+
+  // Fetch existing reference images
+  try {
+    const r = await fetch(`/api/owner/rooms/${rt.id}/reference-images`);
+    if (!r.ok) throw new Error('Failed to load');
+    const images = await r.json();
+    renderRefPanel(panel, rt, images);
+  } catch (e) {
+    panel.innerHTML = '<p class="text-muted" style="font-size:.85rem">Failed to load reference images</p>';
+  }
+}
+
+function renderRefPanel(panel, rt, images) {
+  const positions = rt.positions || [];
+  if (!positions.length) {
+    panel.innerHTML = '<p class="text-muted" style="font-size:.85rem">Add positions to this room template first</p>';
+    return;
+  }
+
+  // Build hint → image map
+  const imgMap = {};
+  images.forEach(img => { imgMap[img.position_hint] = img; });
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;padding:.5rem 0">';
+  positions.forEach(pos => {
+    const hint = pos.hint || pos.label;
+    const img = imgMap[hint];
+    if (img && img.thumbnail_url) {
+      html += `
+        <div style="text-align:center">
+          <div style="position:relative;display:inline-block">
+            <img src="${img.thumbnail_url}" alt="${hint}"
+              style="width:100px;height:75px;object-fit:cover;border-radius:4px;border:2px solid var(--primary)">
+            <button onclick="deleteRefPhoto('${img.id}','${rt.id}')"
+              style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:20px;padding:0">&times;</button>
+          </div>
+          <div style="font-size:.75rem;color:var(--text-secondary);margin-top:.2rem">${pos.label || hint}</div>
+        </div>`;
+    } else {
+      html += `
+        <div style="text-align:center">
+          <label style="display:flex;align-items:center;justify-content:center;width:100px;height:75px;border:2px dashed var(--border);border-radius:4px;cursor:pointer;margin:0 auto;font-size:.8rem;color:var(--text-secondary)">
+            + Add
+            <input type="file" accept="image/*" capture="environment" style="display:none"
+              onchange="uploadRefPhoto('${rt.id}','${hint}',this.files[0])">
+          </label>
+          <div style="font-size:.75rem;color:var(--text-secondary);margin-top:.2rem">${pos.label || hint}</div>
+        </div>`;
+    }
+  });
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+async function uploadRefPhoto(roomId, hint, file) {
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  form.append('position_hint', hint);
+
+  try {
+    const r = await fetch(`/api/owner/rooms/${roomId}/reference-images`, {
+      method: 'POST',
+      body: form,
+    });
+    if (!r.ok) throw new Error('Upload failed');
+
+    // Refresh the panel — need to re-fetch the room template data
+    await showDetail(currentPropertyId);
+    // Re-open the panel after refresh
+    const panel = document.getElementById(`ref-panel-${roomId}`);
+    if (panel && panel.classList.contains('hidden')) {
+      // Find the rt data and toggle
+      const propR = await fetch(`/api/owner/properties/${currentPropertyId}`);
+      if (propR.ok) {
+        const prop = await propR.json();
+        const rt = (prop.room_templates || []).find(t => t.id === roomId);
+        if (rt) toggleRefPhotos(rt);
+      }
+    }
+  } catch (e) {
+    alert('Failed to upload reference photo');
+  }
+}
+
+async function deleteRefPhoto(imageId, roomId) {
+  if (!confirm('Delete this reference photo?')) return;
+  try {
+    const r = await fetch(`/api/owner/reference-images/${imageId}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Delete failed');
+
+    // Refresh
+    await showDetail(currentPropertyId);
+    const propR = await fetch(`/api/owner/properties/${currentPropertyId}`);
+    if (propR.ok) {
+      const prop = await propR.json();
+      const rt = (prop.room_templates || []).find(t => t.id === roomId);
+      if (rt) toggleRefPhotos(rt);
+    }
+  } catch (e) {
+    alert('Failed to delete reference photo');
+  }
 }
 
