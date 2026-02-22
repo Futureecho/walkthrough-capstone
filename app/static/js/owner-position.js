@@ -316,9 +316,18 @@ function compareFrame() {
   const liveGray = toGrayscale(data);
 
   const score = ncc(refGray, liveGray);
-  updateAlignmentRing(score);
+  const lighting = checkLighting(liveGray);
+  const focus = checkFocus(liveGray, ALIGN_W, ALIGN_H);
 
-  if (score >= ALIGN_THRESHOLD) {
+  // Build issue list for display
+  const issues = [];
+  if (!lighting.ok) issues.push(lighting.issue);
+  if (!focus.ok) issues.push(focus.issue);
+
+  const allGood = score >= ALIGN_THRESHOLD && lighting.ok && focus.ok;
+  updateAlignmentRing(score, issues);
+
+  if (allGood) {
     goodFrames++;
     if (goodFrames >= AUTO_CAPTURE_FRAMES) {
       simulateLock();
@@ -336,6 +345,46 @@ function toGrayscale(imageData) {
     gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
   }
   return gray;
+}
+
+function checkLighting(gray) {
+  // Mean brightness should be 40–220, contrast (std dev) should be > 25
+  const n = gray.length;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += gray[i];
+  const mean = sum / n;
+
+  let variance = 0;
+  for (let i = 0; i < n; i++) { const d = gray[i] - mean; variance += d * d; }
+  const stdDev = Math.sqrt(variance / n);
+
+  if (mean < 40) return { ok: false, issue: 'Too dark' };
+  if (mean > 220) return { ok: false, issue: 'Too bright' };
+  if (stdDev < 25) return { ok: false, issue: 'Low contrast' };
+  return { ok: true };
+}
+
+function checkFocus(gray, w, h) {
+  // Variance of Laplacian — measures sharpness
+  // Laplacian kernel: [0,1,0; 1,-4,1; 0,1,0]
+  let sum = 0, sumSq = 0, count = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      const lap = -4 * gray[idx]
+        + gray[idx - 1] + gray[idx + 1]
+        + gray[idx - w] + gray[idx + w];
+      sum += lap;
+      sumSq += lap * lap;
+      count++;
+    }
+  }
+  const mean = sum / count;
+  const variance = (sumSq / count) - (mean * mean);
+
+  // Threshold tuned for 64x48 — blurry images score < 80
+  if (variance < 80) return { ok: false, issue: 'Blurry' };
+  return { ok: true };
 }
 
 function ncc(a, b) {
@@ -356,13 +405,14 @@ function ncc(a, b) {
   return den === 0 ? 0 : num / den;
 }
 
-function updateAlignmentRing(score) {
+function updateAlignmentRing(score, issues) {
   const viewfinder = document.getElementById('viewfinder');
-  // Color: red → yellow → green based on score
+  // Color based on score AND quality checks
+  const hasIssues = issues && issues.length > 0;
   let color;
-  if (score < 0.7) color = 'rgba(255,68,102,0.7)';       // red
-  else if (score < ALIGN_THRESHOLD) color = 'rgba(255,170,0,0.7)'; // yellow
-  else color = 'rgba(0,214,143,0.8)';                     // green
+  if (score < 0.7 || hasIssues) color = 'rgba(255,68,102,0.7)';       // red
+  else if (score < ALIGN_THRESHOLD) color = 'rgba(255,170,0,0.7)';     // yellow
+  else color = 'rgba(0,214,143,0.8)';                                   // green
 
   viewfinder.style.boxShadow = `inset 0 0 0 3px ${color}, 0 0 12px ${color}`;
 
@@ -374,8 +424,10 @@ function updateAlignmentRing(score) {
     label.style.cssText = 'position:absolute;top:.5rem;left:.5rem;background:rgba(0,0,0,.6);color:#fff;padding:.15rem .4rem;border-radius:4px;font-size:.75rem;z-index:10;font-variant-numeric:tabular-nums';
     viewfinder.appendChild(label);
   }
-  label.textContent = `${Math.round(score * 100)}%`;
-  label.style.color = color;
+  const pct = `${Math.round(score * 100)}%`;
+  const issueText = hasIssues ? ` · ${issues.join(' · ')}` : '';
+  label.textContent = pct + issueText;
+  label.style.color = hasIssues ? 'rgba(255,68,102,0.9)' : color;
 }
 
 function hideAlignmentRing() {
