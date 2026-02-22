@@ -144,23 +144,27 @@ function retake() {
 }
 
 function toggleTestGhost() {
-  const viewfinder = document.getElementById('viewfinder');
-  const existing = viewfinder.querySelector('#ghost-overlay');
+  const previewCard = document.getElementById('preview-card');
+  const existing = previewCard.querySelector('#ghost-overlay');
 
   if (existing) {
     removeGhostOverlay();
     return;
   }
 
-  // Get current preview image src
-  const previewSrc = document.getElementById('preview-img').src;
-  if (!previewSrc) return;
+  // Overlay ghost on the preview image container
+  const previewImg = document.getElementById('preview-img');
+  if (!previewImg.src) return;
+
+  // Make preview card position-relative for overlay
+  previewCard.style.position = 'relative';
+  previewCard.style.overflow = 'hidden';
 
   const img = document.createElement('img');
   img.id = 'ghost-overlay';
   img.alt = 'Ghost reference overlay';
-  img.src = previewSrc;
-  viewfinder.appendChild(img);
+  img.src = previewImg.src;
+  previewCard.appendChild(img);
   ghostActive = true;
   document.getElementById('ghost-btn').textContent = 'Hide Ghost Overlay';
 }
