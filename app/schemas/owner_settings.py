@@ -1,10 +1,11 @@
+"""Company settings schemas (renamed from owner_settings)."""
+
 from __future__ import annotations
 from pydantic import BaseModel, field_validator
 
 
-class OwnerSettingsRead(BaseModel):
+class CompanySettingsRead(BaseModel):
     id: str
-    owner_id: str
     llm_provider: str
     openai_api_key_set: bool = False
     anthropic_api_key_set: bool = False
@@ -15,7 +16,7 @@ class OwnerSettingsRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class OwnerSettingsUpdate(BaseModel):
+class CompanySettingsUpdate(BaseModel):
     llm_provider: str | None = None
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
@@ -29,3 +30,8 @@ class OwnerSettingsUpdate(BaseModel):
         if v is not None and v not in ("openai", "anthropic", "gemini", "grok", "none"):
             raise ValueError(f"Invalid llm_provider: {v}")
         return v
+
+
+# Backwards-compat aliases
+OwnerSettingsRead = CompanySettingsRead
+OwnerSettingsUpdate = CompanySettingsUpdate

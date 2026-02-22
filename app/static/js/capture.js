@@ -28,6 +28,11 @@ let pendingRetakes = [];      // position indices that need retaking
 let ghostMap = {};      // orientation_hint → thumbnail_url
 let ghostVisible = true;
 
+// Helper: append token query param for tenant auth
+function tokenParam(sep = '?') {
+  return tenantToken ? `${sep}token=${encodeURIComponent(tenantToken)}` : '';
+}
+
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
@@ -107,7 +112,7 @@ async function startCamera() {
 
 async function createCapture() {
   try {
-    const r = await fetch('/api/captures', {
+    const r = await fetch(`/api/captures${tokenParam()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId, room: roomName }),
@@ -170,9 +175,10 @@ async function capturePhoto() {
   const form = new FormData();
   form.append('file', blob, `photo_${currentPosition + 1}.jpg`);
   form.append('orientation_hint', hint);
+  if (tenantToken) form.append('token', tenantToken);
 
   try {
-    const r = await fetch(`/api/captures/${captureId}/images`, {
+    const r = await fetch(`/api/captures/${captureId}/images${tokenParam()}`, {
       method: 'POST',
       body: form,
     });
@@ -238,7 +244,7 @@ async function submitCapture() {
   hideRetakePrompt();
 
   try {
-    await fetch(`/api/captures/${captureId}/submit`, { method: 'POST' });
+    await fetch(`/api/captures/${captureId}/submit${tokenParam()}`, { method: 'POST' });
     // Results come via WebSocket, but poll as fallback for mobile Safari
     startResultPolling();
   } catch (e) {
@@ -268,7 +274,7 @@ async function pollCaptureStatus() {
   }
 
   try {
-    const r = await fetch(`/api/captures/${captureId}/status`);
+    const r = await fetch(`/api/captures/${captureId}/status${tokenParam()}`);
     if (!r.ok) return;
     const data = await r.json();
 
@@ -426,7 +432,7 @@ async function handleQualityFailures(failedPositions) {
     const wrapper = document.querySelector(`#thumbnails .thumb-wrapper[data-image-id="${fp.imgId}"]`);
     if (wrapper) {
       try {
-        await fetch(`/api/captures/${captureId}/images/${fp.imgId}`, { method: 'DELETE' });
+        await fetch(`/api/captures/${captureId}/images/${fp.imgId}${tokenParam()}`, { method: 'DELETE' });
         wrapper.remove();
         currentPosition--;
       } catch (e) { /* continue */ }
@@ -511,7 +517,7 @@ function showCoverageResults(data) {
 async function deleteImage(imageId, wrapper) {
   if (!captureId) return;
   try {
-    const r = await fetch(`/api/captures/${captureId}/images/${imageId}`, { method: 'DELETE' });
+    const r = await fetch(`/api/captures/${captureId}/images/${imageId}${tokenParam()}`, { method: 'DELETE' });
     if (!r.ok) throw new Error('Delete failed');
     wrapper.remove();
     currentPosition--;
@@ -528,14 +534,14 @@ async function loadGhostOverlay() {
   if (!sessionId || !roomName) return;
   try {
     // Fetch session to get property_id and type
-    const sr = await fetch(`/api/sessions/${sessionId}`);
+    const sr = await fetch(`/api/sessions/${sessionId}${tokenParam()}`);
     if (!sr.ok) return;
     const sess = await sr.json();
     if (sess.type !== 'move_out') return;
 
     // Fetch reference images from the move-in session
     const rr = await fetch(
-      `/api/captures/reference-images?property_id=${encodeURIComponent(sess.property_id)}&room=${encodeURIComponent(roomName)}`
+      `/api/captures/reference-images?property_id=${encodeURIComponent(sess.property_id)}&room=${encodeURIComponent(roomName)}${tokenParam('&')}`
     );
     if (!rr.ok) return;
     const refs = await rr.json();

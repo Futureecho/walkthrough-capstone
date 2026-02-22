@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.engine import get_db, async_session_factory
 from app.db import crud
+from app.db.engine import tenant_pool
+from app.dependencies import require_auth_or_tenant, get_company_db_flexible
+from app.services.auth import AuthContext
 from app.schemas import CaptureCreate, CaptureRead, CaptureStatus
 from app.services.image_store import save_image
 from app.services.ws_manager import ws_manager
@@ -17,7 +19,8 @@ router = APIRouter(prefix="/api/captures", tags=["captures"])
 async def get_reference_images(
     property_id: str,
     room: str,
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
 ):
     """Return move-in reference thumbnails for ghost overlay during move-out capture."""
     images = await crud.get_reference_images(db, property_id, room)
@@ -32,7 +35,11 @@ async def get_reference_images(
 
 
 @router.post("", response_model=CaptureRead, status_code=201)
-async def create_capture(body: CaptureCreate, db: AsyncSession = Depends(get_db)):
+async def create_capture(
+    body: CaptureCreate,
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
+):
     sess = await crud.get_session(db, body.session_id)
     if not sess:
         raise HTTPException(404, "Session not found")
@@ -45,7 +52,9 @@ async def upload_image(
     capture_id: str,
     file: UploadFile = File(...),
     orientation_hint: str = Form(""),
-    db: AsyncSession = Depends(get_db),
+    token: str = Form(""),
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
 ):
     cap = await crud.get_capture(db, capture_id)
     if not cap:
@@ -57,12 +66,11 @@ async def upload_image(
     if file.filename and "." in file.filename:
         ext = "." + file.filename.rsplit(".", 1)[1].lower()
 
-    orig_path, thumb_path = await save_image(data, capture_id, seq, ext)
+    orig_path, thumb_path = await save_image(data, capture_id, seq, ext, company_id=auth.company_id)
     img = await crud.create_capture_image(
         db, capture_id, seq, orig_path, thumb_path, orientation_hint
     )
 
-    # Notify connected clients
     await ws_manager.broadcast(cap.session_id, {
         "event": "image_uploaded",
         "capture_id": capture_id,
@@ -75,7 +83,12 @@ async def upload_image(
 
 
 @router.delete("/{capture_id}/images/{image_id}", status_code=200)
-async def delete_image(capture_id: str, image_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_image(
+    capture_id: str,
+    image_id: str,
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
+):
     """Delete a rejected or unwanted image from a capture."""
     cap = await crud.get_capture(db, capture_id)
     if not cap:
@@ -84,7 +97,6 @@ async def delete_image(capture_id: str, image_id: str, db: AsyncSession = Depend
     if not img or img.capture_id != capture_id:
         raise HTTPException(404, "Image not found in this capture")
 
-    # Delete files from disk
     from pathlib import Path
     for p in (img.file_path, img.thumbnail_path):
         if p:
@@ -102,7 +114,11 @@ async def delete_image(capture_id: str, image_id: str, db: AsyncSession = Depend
 
 
 @router.post("/{capture_id}/submit")
-async def submit_capture(capture_id: str, db: AsyncSession = Depends(get_db)):
+async def submit_capture(
+    capture_id: str,
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
+):
     """Trigger quality gate + coverage review for this capture."""
     cap = await crud.get_capture(db, capture_id)
     if not cap:
@@ -112,18 +128,19 @@ async def submit_capture(capture_id: str, db: AsyncSession = Depends(get_db)):
 
     await crud.update_capture(db, cap, status="processing")
 
-    # Launch agent pipeline in background
-    asyncio.create_task(_run_agents(capture_id, cap.session_id))
+    # Launch agent pipeline in background with company_id for DB routing
+    asyncio.create_task(_run_agents(capture_id, cap.session_id, auth.company_id))
 
     return {"status": "processing", "capture_id": capture_id}
 
 
-async def _run_agents(capture_id: str, session_id: str):
+async def _run_agents(capture_id: str, session_id: str, company_id: str):
     """Background task: run quality gate and coverage agents."""
     try:
         from app.agents.orchestrator import run_capture_pipeline
-        async with async_session_factory() as db:
-            await run_capture_pipeline(capture_id, session_id, db)
+        factory = tenant_pool.session_factory(company_id)
+        async with factory() as db:
+            await run_capture_pipeline(capture_id, session_id, db, company_id=company_id)
     except Exception as e:
         await ws_manager.broadcast(session_id, {
             "event": "error",
@@ -133,7 +150,11 @@ async def _run_agents(capture_id: str, session_id: str):
 
 
 @router.get("/{capture_id}/status", response_model=CaptureStatus)
-async def get_capture_status(capture_id: str, db: AsyncSession = Depends(get_db)):
+async def get_capture_status(
+    capture_id: str,
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
+):
     cap = await crud.get_capture(db, capture_id)
     if not cap:
         raise HTTPException(404, "Capture not found")
@@ -147,7 +168,11 @@ async def get_capture_status(capture_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/{capture_id}/guidance")
-async def get_capture_guidance(capture_id: str, db: AsyncSession = Depends(get_db)):
+async def get_capture_guidance(
+    capture_id: str,
+    auth: AuthContext = Depends(require_auth_or_tenant),
+    db: AsyncSession = Depends(get_company_db_flexible),
+):
     """Return coverage agent's guidance for additional shots."""
     cap = await crud.get_capture(db, capture_id)
     if not cap:

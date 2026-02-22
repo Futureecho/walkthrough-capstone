@@ -20,10 +20,10 @@ def jpeg_bytes():
 
 @pytest.fixture
 def store_dir(tmp_path, monkeypatch):
-    """Override image_store._BASE to use a temp directory."""
+    """Override image_store._get_base to use a temp directory."""
     base = tmp_path / "image_store"
     base.mkdir()
-    monkeypatch.setattr(image_store, "_BASE", base)
+    monkeypatch.setattr(image_store, "_get_base", lambda company_id=None: base)
     return base
 
 

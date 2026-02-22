@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accept Invite - PropertyInspect</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <h1>PropertyInspect</h1>
+  <div class="subtitle">Accept Invite</div>
+</div>
+
+<div class="container">
+  <!-- Loading -->
+  <div class="card" id="loading-card">
+    <div class="text-center"><div class="spinner"></div></div>
+  </div>
+
+  <!-- Invalid Token -->
+  <div class="card hidden" id="invalid-card">
+    <h2>Invalid Invite</h2>
+    <p class="text-muted">This invite link is invalid or has expired.</p>
+    <a href="/owner/login" class="btn btn-primary btn-block" style="margin-top:1rem">Go to Login</a>
+  </div>
+
+  <!-- Accept Form -->
+  <div class="card hidden" id="accept-card">
+    <h2>Join <span id="company-name"></span></h2>
+    <p class="text-muted mb-1">You've been invited as: <strong><span id="invite-role"></span></strong></p>
+    <p class="text-muted mb-1">Email: <strong><span id="invite-email"></span></strong></p>
+
+    <form id="accept-form" autocomplete="off">
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Display Name</label>
+      <input type="text" id="display-name" placeholder="Your name" required>
+
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Password</label>
+      <input type="password" id="accept-password" placeholder="At least 8 characters" autocomplete="new-password" required>
+
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Confirm Password</label>
+      <input type="password" id="accept-confirm" placeholder="Confirm password" autocomplete="new-password" required>
+
+      <div id="accept-error" style="color:var(--danger);font-size:.9rem;margin-bottom:.5rem;display:none"></div>
+      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+    </form>
+  </div>
+
+  <!-- Success -->
+  <div class="card hidden" id="success-card">
+    <h2>Account Created</h2>
+    <p class="text-muted">Your account is ready. You can now log in.</p>
+    <a href="/owner/login" class="btn btn-primary btn-block" style="margin-top:1rem">Go to Login</a>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = window.location.pathname.split('/invite/')[1];
+  if (!token) { showInvalid(); return; }
+
+  try {
+    const r = await fetch(`/api/invite/${token}`);
+    document.getElementById('loading-card').classList.add('hidden');
+
+    if (!r.ok) { showInvalid(); return; }
+
+    const data = await r.json();
+    document.getElementById('company-name').textContent = data.company_name;
+    document.getElementById('invite-role').textContent = data.role;
+    document.getElementById('invite-email').textContent = data.email;
+    document.getElementById('accept-card').classList.remove('hidden');
+  } catch (e) {
+    showInvalid();
+  }
+
+  document.getElementById('accept-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('accept-error');
+    errEl.style.display = 'none';
+
+    const display_name = document.getElementById('display-name').value.trim();
+    const password = document.getElementById('accept-password').value;
+    const confirm = document.getElementById('accept-confirm').value;
+
+    if (!display_name) { showError(errEl, 'Name is required'); return; }
+    if (password.length < 8) { showError(errEl, 'Password must be at least 8 characters'); return; }
+    if (password !== confirm) { showError(errEl, 'Passwords do not match'); return; }
+
+    try {
+      const r = await fetch(`/api/invite/${token}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name, password }),
+      });
+      const data = await r.json();
+      if (!r.ok) { showError(errEl, data.detail || 'Failed'); return; }
+
+      document.getElementById('accept-card').classList.add('hidden');
+      document.getElementById('success-card').classList.remove('hidden');
+    } catch (err) {
+      showError(errEl, 'Connection error');
+    }
+  });
+});
+
+function showInvalid() {
+  document.getElementById('loading-card').classList.add('hidden');
+  document.getElementById('invalid-card').classList.remove('hidden');
+}
+
+function showError(el, msg) {
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>

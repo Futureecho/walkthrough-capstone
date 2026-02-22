@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Owner Settings</title>
+<title>Settings - PropertyInspect</title>
 <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
   <div class="flex-between">
     <div>
       <h1>Settings</h1>
-      <div class="subtitle">AI Provider &amp; Defaults</div>
+      <div class="subtitle">AI Provider, Security &amp; Defaults</div>
     </div>
     <a href="/owner" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Dashboard</a>
   </div>
@@ -59,6 +59,35 @@
 
   <button class="btn btn-primary btn-block" id="save-btn">Save Settings</button>
   <div id="save-msg" class="text-muted mt-1" style="text-align:center"></div>
+
+  <!-- MFA Section -->
+  <div class="card mt-2">
+    <h2>Two-Factor Authentication</h2>
+    <div id="mfa-status-area">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- MFA Setup (hidden by default) -->
+    <div id="mfa-setup" class="hidden" style="margin-top:1rem">
+      <p class="text-muted mb-1">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
+      <div id="mfa-qr" style="text-align:center;margin:1rem 0"></div>
+      <p class="text-muted" style="font-size:.8rem;word-break:break-all">Manual key: <code id="mfa-secret-text"></code></p>
+      <input type="text" id="mfa-verify-code" placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+             style="text-align:center;font-size:1.2rem;letter-spacing:.2em">
+      <button class="btn btn-primary btn-block" id="mfa-verify-btn">Enable MFA</button>
+      <div id="mfa-setup-msg" style="font-size:.85rem;text-align:center;margin-top:.5rem"></div>
+    </div>
+
+    <!-- MFA Disable (hidden by default) -->
+    <div id="mfa-disable" class="hidden" style="margin-top:1rem">
+      <p class="text-muted mb-1">Enter your password and current TOTP code to disable MFA.</p>
+      <input type="password" id="mfa-disable-password" placeholder="Password" autocomplete="current-password">
+      <input type="text" id="mfa-disable-code" placeholder="6-digit code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+             style="text-align:center;font-size:1.2rem;letter-spacing:.2em">
+      <button class="btn btn-block" id="mfa-disable-btn" style="background:var(--danger);color:#fff">Disable MFA</button>
+      <div id="mfa-disable-msg" style="font-size:.85rem;text-align:center;margin-top:.5rem"></div>
+    </div>
+  </div>
 </div>
 
 <script src="/static/js/owner-settings.js"></script>

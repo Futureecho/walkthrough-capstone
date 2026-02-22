@@ -1,75 +1,39 @@
-/* owner-login.js — Setup (first-run) and login */
+/* owner-login.js — Email/password login + MFA verification */
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Check if setup is needed
-  try {
-    const r = await fetch('/api/owner/status');
-    const data = await r.json();
+let _mfaToken = '';
+let _mfaEmail = '';
 
-    document.getElementById('loading-card').classList.add('hidden');
-
-    if (data.setup_required) {
-      document.getElementById('page-subtitle').textContent = 'First-Time Setup';
-      document.getElementById('setup-card').classList.remove('hidden');
-    } else {
-      document.getElementById('page-subtitle').textContent = 'Sign In';
-      document.getElementById('login-card').classList.remove('hidden');
-    }
-  } catch (e) {
-    document.getElementById('loading-card').innerHTML =
-      '<p style="color:var(--danger)">Failed to connect to server</p>';
-  }
-
-  // Setup form
-  document.getElementById('setup-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errEl = document.getElementById('setup-error');
-    errEl.style.display = 'none';
-
-    const username = document.getElementById('setup-username').value.trim();
-    const password = document.getElementById('setup-password').value;
-    const confirm = document.getElementById('setup-confirm').value;
-    const hint = document.getElementById('setup-hint').value.trim();
-
-    if (!username) { showError(errEl, 'Username is required'); return; }
-    if (password.length < 6) { showError(errEl, 'Password must be at least 6 characters'); return; }
-    if (password !== confirm) { showError(errEl, 'Passwords do not match'); return; }
-
-    try {
-      const r = await fetch('/api/owner/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, password_hint: hint }),
-      });
-      const data = await r.json();
-      if (!r.ok) { showError(errEl, data.detail || 'Setup failed'); return; }
-
-      // Auto-logged in — go to dashboard
-      window.location.href = '/owner';
-    } catch (err) {
-      showError(errEl, 'Connection error');
-    }
-  });
-
+document.addEventListener('DOMContentLoaded', () => {
   // Login form
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errEl = document.getElementById('login-error');
     errEl.style.display = 'none';
 
-    const username = document.getElementById('login-username').value.trim();
+    const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
 
-    if (!username || !password) { showError(errEl, 'Enter username and password'); return; }
+    if (!email || !password) { showError(errEl, 'Enter email and password'); return; }
 
     try {
-      const r = await fetch('/api/owner/login', {
+      const r = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await r.json();
+
       if (!r.ok) { showError(errEl, data.detail || 'Login failed'); return; }
+
+      if (data.mfa_required) {
+        // Show MFA step
+        _mfaToken = data.mfa_token;
+        _mfaEmail = data.email;
+        document.getElementById('login-card').classList.add('hidden');
+        document.getElementById('mfa-card').classList.remove('hidden');
+        document.getElementById('mfa-code').focus();
+        return;
+      }
 
       window.location.href = '/owner';
     } catch (err) {
@@ -77,23 +41,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Forgot password link
-  document.getElementById('forgot-link').addEventListener('click', async (e) => {
+  // MFA form
+  document.getElementById('mfa-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('login-username').value.trim();
+    const errEl = document.getElementById('mfa-error');
+    errEl.style.display = 'none';
+
+    const code = document.getElementById('mfa-code').value.trim();
+    if (!code || code.length !== 6) { showError(errEl, 'Enter 6-digit code'); return; }
+
     try {
-      const r = await fetch(`/api/owner/hint?username=${encodeURIComponent(username)}`);
+      const r = await fetch('/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: _mfaEmail, code, mfa_token: _mfaToken }),
+      });
       const data = await r.json();
-      const hintBox = document.getElementById('hint-box');
-      const hintText = document.getElementById('hint-text');
-      if (data.hint) {
-        hintText.textContent = data.hint;
-      } else {
-        hintText.textContent = 'No hint was set for this account.';
-      }
-      hintBox.classList.remove('hidden');
+
+      if (!r.ok) { showError(errEl, data.detail || 'Invalid code'); return; }
+
+      window.location.href = '/owner';
     } catch (err) {
-      // silent
+      showError(errEl, 'Connection error');
+    }
+  });
+
+  // Forgot password
+  document.getElementById('forgot-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('login-card').classList.add('hidden');
+    document.getElementById('forgot-card').classList.remove('hidden');
+    // Pre-fill email
+    const email = document.getElementById('login-email').value;
+    if (email) document.getElementById('forgot-email').value = email;
+  });
+
+  document.getElementById('back-to-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('forgot-card').classList.add('hidden');
+    document.getElementById('login-card').classList.remove('hidden');
+  });
+
+  document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('forgot-error');
+    const successEl = document.getElementById('forgot-success');
+    errEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email) { showError(errEl, 'Enter your email'); return; }
+
+    try {
+      const r = await fetch('/api/auth/password/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await r.json();
+      successEl.textContent = data.message || 'Check your email for a reset link.';
+      successEl.style.display = 'block';
+    } catch (err) {
+      showError(errEl, 'Connection error');
     }
   });
 });

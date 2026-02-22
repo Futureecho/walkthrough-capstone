@@ -5,9 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.engine import get_db
 from app.db import crud
-from app.services.auth import get_current_owner
+from app.dependencies import require_auth, get_company_db
+from app.services.auth import AuthContext
 from app.schemas.room_template import RoomTemplateCreate, RoomTemplateRead, RoomTemplateUpdate
 
 router = APIRouter(prefix="/api/owner", tags=["room-templates"])
@@ -17,11 +17,11 @@ router = APIRouter(prefix="/api/owner", tags=["room-templates"])
 async def create_room(
     property_id: str,
     body: RoomTemplateCreate,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     prop = await crud.get_property(db, property_id)
-    if not prop or prop.owner_id != owner_id:
+    if not prop:
         raise HTTPException(404, "Property not found")
 
     positions = [p.model_dump() for p in body.positions]
@@ -32,11 +32,11 @@ async def create_room(
 @router.get("/properties/{property_id}/rooms")
 async def list_rooms(
     property_id: str,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     prop = await crud.get_property(db, property_id)
-    if not prop or prop.owner_id != owner_id:
+    if not prop:
         raise HTTPException(404, "Property not found")
 
     templates = await crud.list_room_templates_for_property(db, property_id)
@@ -47,15 +47,11 @@ async def list_rooms(
 async def update_room(
     room_id: str,
     body: RoomTemplateUpdate,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     rt = await crud.get_room_template(db, room_id)
     if not rt:
-        raise HTTPException(404, "Room template not found")
-
-    prop = await crud.get_property(db, rt.property_id)
-    if not prop or prop.owner_id != owner_id:
         raise HTTPException(404, "Room template not found")
 
     updates = {}
@@ -74,15 +70,11 @@ async def update_room(
 @router.delete("/rooms/{room_id}")
 async def delete_room(
     room_id: str,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     rt = await crud.get_room_template(db, room_id)
     if not rt:
-        raise HTTPException(404, "Room template not found")
-
-    prop = await crud.get_property(db, rt.property_id)
-    if not prop or prop.owner_id != owner_id:
         raise HTTPException(404, "Room template not found")
 
     await crud.delete_room_template(db, rt)

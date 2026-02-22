@@ -1,4 +1,4 @@
-"""Owner dashboard + management API endpoints."""
+"""Dashboard + management API endpoints (replaces owner.py)."""
 
 from __future__ import annotations
 
@@ -9,41 +9,37 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.engine import get_db
 from app.db import crud
-from app.services.auth import get_current_owner
-from app.services.encryption import encrypt_value, decrypt_value
-from app.schemas.owner_settings import OwnerSettingsRead, OwnerSettingsUpdate
+from app.dependencies import require_auth, require_role, get_company_db
+from app.services.auth import AuthContext
+from app.services.encryption import encrypt_value
+from app.schemas.owner_settings import CompanySettingsUpdate
 from app.schemas.property import PropertyCreate, PropertyRead
 from app.schemas.session import SessionRead
 from app.schemas.tenant_link import TenantLinkCreate, TenantLinkRead
 from app.schemas.candidate import CandidateOwnerUpdate, CandidateRead
 
-router = APIRouter(prefix="/api/owner", tags=["owner"])
+router = APIRouter(prefix="/api/owner", tags=["dashboard"])
 
 
 # ── Queue ────────────────────────────────────────────────
 
 @router.get("/queue")
 async def owner_queue(
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Return pending inspections (active) and pending review sessions."""
     from app.models import Property, Session
     from sqlalchemy import select
 
-    # Get all properties for this owner
-    result = await db.execute(
-        select(Property).where(Property.owner_id == owner_id)
-    )
+    result = await db.execute(select(Property).order_by(Property.created_at.desc()))
     properties = list(result.scalars().all())
     prop_ids = [p.id for p in properties]
 
     if not prop_ids:
         return {"pending_inspections": [], "pending_review": []}
 
-    # Get sessions with relevant statuses
     result = await db.execute(
         select(Session).where(
             Session.property_id.in_(prop_ids),
@@ -83,13 +79,13 @@ async def owner_queue(
 
 @router.get("/properties")
 async def list_owner_properties(
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     from app.models import Property
     from sqlalchemy import select
     result = await db.execute(
-        select(Property).where(Property.owner_id == owner_id).order_by(Property.created_at.desc())
+        select(Property).order_by(Property.created_at.desc())
     )
     properties = list(result.scalars().all())
     return [
@@ -109,12 +105,11 @@ async def list_owner_properties(
 @router.post("/properties")
 async def create_owner_property(
     body: PropertyCreate,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     prop = await crud.create_property(db, body.label, body.rooms)
     prop.address = body.address
-    prop.owner_id = owner_id
     await db.commit()
     await db.refresh(prop)
     return PropertyRead.model_validate(prop)
@@ -123,11 +118,11 @@ async def create_owner_property(
 @router.get("/properties/{property_id}")
 async def get_owner_property(
     property_id: str,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     prop = await crud.get_property(db, property_id)
-    if not prop or prop.owner_id != owner_id:
+    if not prop:
         raise HTTPException(404, "Property not found")
 
     room_templates = await crud.list_room_templates_for_property(db, property_id)
@@ -169,11 +164,11 @@ async def get_owner_property(
 async def update_owner_property(
     property_id: str,
     body: dict,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     prop = await crud.get_property(db, property_id)
-    if not prop or prop.owner_id != owner_id:
+    if not prop:
         raise HTTPException(404, "Property not found")
     if "address" in body:
         prop.address = body["address"]
@@ -190,15 +185,14 @@ async def update_owner_property(
 async def create_session_with_link(
     property_id: str,
     body: TenantLinkCreate,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Create a session + tenant link for a property."""
     prop = await crud.get_property(db, property_id)
-    if not prop or prop.owner_id != owner_id:
+    if not prop:
         raise HTTPException(404, "Property not found")
 
-    # Create session
     session = await crud.create_session(
         db, property_id, body.session_type, body.tenant_name,
     )
@@ -207,8 +201,9 @@ async def create_session_with_link(
     await db.commit()
     await db.refresh(session)
 
-    # Create tenant link
-    token = secrets.token_urlsafe(48)
+    # Token format: {company_id}:{random} so tenant API can route to correct DB
+    raw_token = secrets.token_urlsafe(48)
+    token = f"{auth.company_id}:{raw_token}"
     expires_at = datetime.now(timezone.utc) + timedelta(days=body.duration_days)
     link = await crud.create_tenant_link(db, session.id, token, expires_at)
 
@@ -225,19 +220,17 @@ async def create_session_with_link(
 async def reactivate_session(
     session_id: str,
     body: dict,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Reactivate a session with a new tenant link."""
     session = await crud.get_session(db, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    prop = await crud.get_property(db, session.property_id)
-    if not prop or prop.owner_id != owner_id:
-        raise HTTPException(404, "Session not found")
 
     duration_days = body.get("duration_days", 7)
-    token = secrets.token_urlsafe(48)
+    raw_token = secrets.token_urlsafe(48)
+    token = f"{auth.company_id}:{raw_token}"
     expires_at = datetime.now(timezone.utc) + timedelta(days=duration_days)
 
     # Deactivate existing links
@@ -262,20 +255,16 @@ async def reactivate_session(
 @router.post("/sessions/{session_id}/publish")
 async def publish_session(
     session_id: str,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Publish a reviewed session."""
     session = await crud.get_session(db, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    prop = await crud.get_property(db, session.property_id)
-    if not prop or prop.owner_id != owner_id:
-        raise HTTPException(404, "Session not found")
 
     session.report_status = "published"
 
-    # Deactivate any active tenant links
     if session.tenant_links:
         for link in session.tenant_links:
             if link.is_active:
@@ -288,20 +277,16 @@ async def publish_session(
 @router.post("/sessions/{session_id}/cancel")
 async def cancel_session(
     session_id: str,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Cancel a session and deactivate its tenant links."""
     session = await crud.get_session(db, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    prop = await crud.get_property(db, session.property_id)
-    if not prop or prop.owner_id != owner_id:
-        raise HTTPException(404, "Session not found")
 
     session.report_status = "cancelled"
 
-    # Deactivate any active tenant links
     if session.tenant_links:
         for link in session.tenant_links:
             if link.is_active:
@@ -317,8 +302,8 @@ async def cancel_session(
 async def owner_update_candidate(
     candidate_id: str,
     body: CandidateOwnerUpdate,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     cand = await crud.get_candidate(db, candidate_id)
     if not cand:
@@ -341,16 +326,15 @@ async def owner_update_candidate(
 
 @router.get("/settings")
 async def get_settings(
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
-    settings = await crud.get_owner_settings(db, owner_id)
+    settings = await crud.get_company_settings(db)
     if not settings:
-        settings = await crud.create_owner_settings(db, owner_id)
+        settings = await crud.create_company_settings(db)
 
     return {
         "id": settings.id,
-        "owner_id": settings.owner_id,
         "llm_provider": settings.llm_provider,
         "openai_api_key_set": bool(settings.openai_api_key),
         "anthropic_api_key_set": bool(settings.anthropic_api_key),
@@ -362,13 +346,13 @@ async def get_settings(
 
 @router.put("/settings")
 async def update_settings(
-    body: OwnerSettingsUpdate,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    body: CompanySettingsUpdate,
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
-    settings = await crud.get_owner_settings(db, owner_id)
+    settings = await crud.get_company_settings(db)
     if not settings:
-        settings = await crud.create_owner_settings(db, owner_id)
+        settings = await crud.create_company_settings(db)
 
     updates = {}
     if body.llm_provider is not None:
@@ -376,22 +360,19 @@ async def update_settings(
     if body.default_link_days is not None:
         updates["default_link_days"] = body.default_link_days
 
-    # Encrypt API keys before storing
     for key_field in ("openai_api_key", "anthropic_api_key", "gemini_api_key", "grok_api_key"):
         val = getattr(body, key_field, None)
         if val is not None:
             try:
                 updates[key_field] = encrypt_value(val) if val else ""
             except RuntimeError:
-                # FERNET_KEY not set — store plain (dev mode)
                 updates[key_field] = val
 
     if updates:
-        settings = await crud.update_owner_settings(db, settings, **updates)
+        settings = await crud.update_company_settings(db, settings, **updates)
 
     return {
         "id": settings.id,
-        "owner_id": settings.owner_id,
         "llm_provider": settings.llm_provider,
         "openai_api_key_set": bool(settings.openai_api_key),
         "anthropic_api_key_set": bool(settings.anthropic_api_key),
@@ -406,15 +387,12 @@ async def update_settings(
 @router.post("/sessions/{session_id}/pdf")
 async def generate_session_pdf(
     session_id: str,
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Generate a PDF report for a session."""
     session = await crud.get_session(db, session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
-    prop = await crud.get_property(db, session.property_id)
-    if not prop or prop.owner_id != owner_id:
         raise HTTPException(404, "Session not found")
 
     from app.services.pdf_generator import generate_pdf
@@ -434,17 +412,14 @@ async def generate_session_pdf(
 async def search_reports(
     q: str = "",
     session_type: str = "",
-    owner_id: str = Depends(get_current_owner),
-    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
 ):
     """Search published reports by tenant name or filter by type."""
-    from app.models import Property, Session
+    from app.models import Session
     from sqlalchemy import select
 
-    query = select(Session).join(Property).where(
-        Property.owner_id == owner_id,
-        Session.report_status == "published",
-    )
+    query = select(Session).where(Session.report_status == "published")
 
     if session_type:
         query = query.where(Session.type == session_type)
@@ -452,7 +427,6 @@ async def search_reports(
     result = await db.execute(query.order_by(Session.created_at.desc()))
     sessions = list(result.scalars().all())
 
-    # Filter by search term (tenant name)
     if q:
         q_lower = q.lower()
         sessions = [
@@ -461,7 +435,6 @@ async def search_reports(
             or q_lower in (s.tenant_name_2 or "").lower()
         ]
 
-    # Fetch properties for display
     prop_ids = list({s.property_id for s in sessions})
     props = {}
     for pid in prop_ids:
@@ -482,3 +455,58 @@ async def search_reports(
         }
         for s in sessions
     ]
+
+
+# ── Data Export ───────────────────────────────────────────
+
+@router.get("/export/full")
+async def export_full(
+    auth: AuthContext = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_company_db),
+):
+    """Export entire company data as ZIP (admin only)."""
+    from app.services.export import export_full_zip
+    zip_bytes = await export_full_zip(auth.company_id, db)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=company_export.zip"},
+    )
+
+
+@router.get("/export/property/{property_id}")
+async def export_property(
+    property_id: str,
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
+):
+    """Export a single property's data as ZIP."""
+    from app.services.export import export_property_zip
+    zip_bytes = await export_property_zip(auth.company_id, property_id, db)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=property_{property_id[:8]}.zip"},
+    )
+
+
+@router.get("/export/report/{session_id}")
+async def export_report(
+    session_id: str,
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
+):
+    """Export a session report as PDF."""
+    session = await crud.get_session(db, session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    from app.services.export import export_pdf
+    pdf_bytes = await export_pdf(session_id, db)
+
+    filename = f"report_{session_id[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

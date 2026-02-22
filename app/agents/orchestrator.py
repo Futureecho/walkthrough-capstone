@@ -1,4 +1,4 @@
-"""Agent orchestrator: wires quality gate → coverage review → comparison."""
+"""Agent orchestrator: wires quality gate -> coverage review -> comparison."""
 
 from __future__ import annotations
 
@@ -12,15 +12,9 @@ from app.services.ws_manager import ws_manager
 logger = logging.getLogger(__name__)
 
 
-async def _get_owner_llm_provider(session_id: str, db: AsyncSession) -> str:
-    """Trace session → property → owner → settings to get the llm_provider."""
-    session = await crud.get_session(db, session_id)
-    if not session:
-        return "openai"
-    prop = await crud.get_property(db, session.property_id)
-    if not prop or not prop.owner_id:
-        return "openai"
-    settings = await crud.get_owner_settings(db, prop.owner_id)
+async def _get_llm_provider(db: AsyncSession) -> str:
+    """Get the llm_provider from the tenant DB's company_settings."""
+    settings = await crud.get_company_settings(db)
     if not settings:
         return "openai"
     return settings.llm_provider
@@ -34,7 +28,12 @@ async def _set_review_flag(session_id: str, flag: str, db: AsyncSession):
         await db.commit()
 
 
-async def run_capture_pipeline(capture_id: str, session_id: str, db: AsyncSession):
+async def run_capture_pipeline(
+    capture_id: str,
+    session_id: str,
+    db: AsyncSession,
+    company_id: str = "",
+):
     """Run quality gate then coverage review for a submitted capture."""
     from app.agents.quality_gate.graph import run_quality_gate
     from app.agents.coverage_review.graph import run_coverage_review
@@ -43,8 +42,8 @@ async def run_capture_pipeline(capture_id: str, session_id: str, db: AsyncSessio
     if not capture:
         return
 
-    # Check if owner has opted for manual review
-    llm_provider = await _get_owner_llm_provider(session_id, db)
+    # Check if company has opted for manual review
+    llm_provider = await _get_llm_provider(db)
     if llm_provider == "none":
         await crud.update_capture(db, capture, status="passed")
         await _set_review_flag(session_id, "manual_review", db)
@@ -104,18 +103,15 @@ async def _try_auto_comparison(capture, session_id: str, db: AsyncSession):
     if not session or session.type != "move_out":
         return
 
-    # Find a move-in session for the same property
     all_sessions = await crud.list_sessions_for_property(db, session.property_id)
     move_in_sessions = [s for s in all_sessions if s.type == "move_in"]
     if not move_in_sessions:
         return
 
-    # Find a move-in capture for the same room
     for mi_session in move_in_sessions:
         mi_captures = await crud.list_captures_for_session(db, mi_session.id)
         for mi_cap in mi_captures:
             if mi_cap.room == capture.room and mi_cap.status == "passed":
-                # Create comparison
                 comp = await crud.create_comparison(
                     db, capture.room, mi_cap.id, capture.id
                 )

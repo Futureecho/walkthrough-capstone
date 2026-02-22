@@ -9,8 +9,10 @@ from app.api.comparisons import router as comparisons_router
 from app.api.candidates import router as candidates_router
 from app.api.reports import router as reports_router
 from app.api.websocket import router as websocket_router
-from app.api.owner_auth import router as owner_auth_router
-from app.api.owner import router as owner_router
+from app.api.auth import router as auth_router
+from app.api.admin import router as admin_router
+from app.api.invite import router as invite_router
+from app.api.dashboard import router as dashboard_router
 from app.api.room_templates import router as room_templates_router
 from app.api.tenant import router as tenant_router
 
@@ -22,7 +24,9 @@ api_router.include_router(comparisons_router)
 api_router.include_router(candidates_router)
 api_router.include_router(reports_router)
 api_router.include_router(websocket_router)
-api_router.include_router(owner_auth_router)
-api_router.include_router(owner_router)
+api_router.include_router(auth_router)
+api_router.include_router(admin_router)
+api_router.include_router(invite_router)
+api_router.include_router(dashboard_router)
 api_router.include_router(room_templates_router)
 api_router.include_router(tenant_router)

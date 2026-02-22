@@ -3,45 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Owner Portal</title>
+<title>Login - PropertyInspect</title>
 <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 <div class="header">
-  <h1>Owner Portal</h1>
-  <div class="subtitle" id="page-subtitle">Loading...</div>
+  <h1>PropertyInspect</h1>
+  <div class="subtitle" id="page-subtitle">Sign In</div>
 </div>
 
 <div class="container">
 
-  <!-- Setup Form (first-run) -->
-  <div class="card hidden" id="setup-card">
-    <h2>Create Your Account</h2>
-    <p class="text-muted mb-2">Set up your owner account to get started.</p>
-    <form id="setup-form" autocomplete="off">
-      <label for="setup-username" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Username</label>
-      <input type="text" id="setup-username" placeholder="Choose a username" autocomplete="username" required>
-
-      <label for="setup-password" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Password</label>
-      <input type="password" id="setup-password" placeholder="At least 6 characters" autocomplete="new-password" required>
-
-      <label for="setup-confirm" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Confirm Password</label>
-      <input type="password" id="setup-confirm" placeholder="Confirm password" autocomplete="new-password" required>
-
-      <label for="setup-hint" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Password Hint <span style="opacity:.6">(for recovery)</span></label>
-      <input type="text" id="setup-hint" placeholder="Something to jog your memory">
-
-      <div id="setup-error" style="color:var(--danger);font-size:.9rem;margin-bottom:.5rem;display:none"></div>
-      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
-    </form>
-  </div>
-
   <!-- Login Form -->
-  <div class="card hidden" id="login-card">
+  <div class="card" id="login-card">
     <h2>Login</h2>
     <form id="login-form" autocomplete="on">
-      <label for="login-username" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Username</label>
-      <input type="text" id="login-username" placeholder="Username" autocomplete="username" required>
+      <label for="login-email" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Email</label>
+      <input type="email" id="login-email" placeholder="you@company.com" autocomplete="email" required>
 
       <label for="login-password" style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Password</label>
       <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required>
@@ -52,14 +30,33 @@
     <div class="mt-1 text-center">
       <a href="#" id="forgot-link" style="font-size:.85rem;color:var(--primary)">Forgot password?</a>
     </div>
-    <div id="hint-box" class="hidden mt-1" style="padding:.75rem;background:#eff6ff;border-radius:var(--radius);font-size:.9rem">
-      <strong>Password Hint:</strong> <span id="hint-text"></span>
-    </div>
   </div>
 
-  <!-- Loading -->
-  <div class="card" id="loading-card">
-    <div class="text-center"><div class="spinner"></div></div>
+  <!-- MFA Verification -->
+  <div class="card hidden" id="mfa-card">
+    <h2>Two-Factor Authentication</h2>
+    <p class="text-muted mb-1">Enter the 6-digit code from your authenticator app.</p>
+    <form id="mfa-form" autocomplete="off">
+      <input type="text" id="mfa-code" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+             style="text-align:center;font-size:1.5rem;letter-spacing:.3em" autocomplete="one-time-code" required>
+      <div id="mfa-error" style="color:var(--danger);font-size:.9rem;margin-bottom:.5rem;display:none"></div>
+      <button type="submit" class="btn btn-primary btn-block">Verify</button>
+    </form>
+  </div>
+
+  <!-- Forgot Password -->
+  <div class="card hidden" id="forgot-card">
+    <h2>Reset Password</h2>
+    <p class="text-muted mb-1">Enter your email to receive a reset link.</p>
+    <form id="forgot-form" autocomplete="off">
+      <input type="email" id="forgot-email" placeholder="you@company.com" required>
+      <div id="forgot-error" style="color:var(--danger);font-size:.9rem;margin-bottom:.5rem;display:none"></div>
+      <div id="forgot-success" style="color:var(--success);font-size:.9rem;margin-bottom:.5rem;display:none"></div>
+      <button type="submit" class="btn btn-primary btn-block">Send Reset Link</button>
+    </form>
+    <div class="mt-1 text-center">
+      <a href="#" id="back-to-login" style="font-size:.85rem;color:var(--primary)">Back to login</a>
+    </div>
   </div>
 
 </div>

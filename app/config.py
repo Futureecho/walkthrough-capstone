@@ -59,11 +59,15 @@ class ImageStoreConfig(BaseSettings):
 
 class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///data/walkthrough.db"
+    auth_database_url: str = "sqlite+aiosqlite:///data/auth.db"
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     gemini_api_key: str = ""
     grok_api_key: str = ""
     fernet_key: str = ""
+    secret_key: str = ""  # For signing tokens (fallback: auto-generated)
+    resend_api_key: str = ""  # For sending emails via Resend
+    app_url: str = "http://localhost:8000"  # Public URL for links in emails
     quality_gate: QualityGateConfig = Field(default_factory=QualityGateConfig)
     coverage: CoverageConfig = Field(default_factory=CoverageConfig)
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
@@ -82,8 +86,10 @@ def get_settings() -> Settings:
     lp = LanguagePolicyConfig(**y.get("language_policy", {}))
     img = ImageStoreConfig(**y.get("image_store", {}))
     db_url = y.get("database", {}).get("url", "sqlite+aiosqlite:///data/walkthrough.db")
+    auth_db_url = y.get("database", {}).get("auth_url", "sqlite+aiosqlite:///data/auth.db")
     return Settings(
         database_url=db_url,
+        auth_database_url=auth_db_url,
         quality_gate=qg,
         coverage=cov,
         comparison=comp,

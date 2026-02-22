@@ -1,4 +1,4 @@
-"""CRUD operations for all models."""
+"""CRUD operations for tenant models (per-company DB)."""
 
 from __future__ import annotations
 
@@ -8,49 +8,29 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    Owner, OwnerSettings, Property, RoomTemplate, Session,
+    CompanySettings, Property, RoomTemplate, Session,
     Capture, CaptureImage, Annotation, Comparison, Candidate,
     TenantLink,
 )
 
 
-# ── Owner ────────────────────────────────────────────────
+# ── CompanySettings ───────────────────────────────────────
 
-async def get_owner_by_username(db: AsyncSession, username: str) -> Owner | None:
-    result = await db.execute(select(Owner).where(Owner.username == username))
+async def get_company_settings(db: AsyncSession) -> CompanySettings | None:
+    """Get the single company settings row for this tenant DB."""
+    result = await db.execute(select(CompanySettings))
     return result.scalars().first()
 
 
-async def create_owner(db: AsyncSession, username: str, password_hash: str) -> Owner:
-    owner = Owner(username=username, password_hash=password_hash)
-    db.add(owner)
-    await db.commit()
-    await db.refresh(owner)
-    return owner
-
-
-async def get_owner(db: AsyncSession, owner_id: str) -> Owner | None:
-    return await db.get(Owner, owner_id)
-
-
-# ── OwnerSettings ────────────────────────────────────────
-
-async def get_owner_settings(db: AsyncSession, owner_id: str) -> OwnerSettings | None:
-    result = await db.execute(
-        select(OwnerSettings).where(OwnerSettings.owner_id == owner_id)
-    )
-    return result.scalars().first()
-
-
-async def create_owner_settings(db: AsyncSession, owner_id: str) -> OwnerSettings:
-    settings = OwnerSettings(owner_id=owner_id)
+async def create_company_settings(db: AsyncSession) -> CompanySettings:
+    settings = CompanySettings()
     db.add(settings)
     await db.commit()
     await db.refresh(settings)
     return settings
 
 
-async def update_owner_settings(db: AsyncSession, settings: OwnerSettings, **kwargs) -> OwnerSettings:
+async def update_company_settings(db: AsyncSession, settings: CompanySettings, **kwargs) -> CompanySettings:
     for k, v in kwargs.items():
         if v is not None:
             setattr(settings, k, v)
@@ -166,7 +146,6 @@ async def get_reference_images(
     images = list(result.scalars().all())
     if not images:
         return []
-    # Only return images from the most recent move-in session
     first_capture_id = images[0].capture_id
     return [img for img in images if img.capture_id == first_capture_id]
 
@@ -329,7 +308,6 @@ async def update_comparison(db: AsyncSession, comparison: Comparison, **kwargs) 
 
 
 async def list_comparisons_for_property(db: AsyncSession, property_id: str) -> list[Comparison]:
-    """Get all comparisons across all sessions for a property."""
     result = await db.execute(
         select(Comparison)
         .join(Capture, Comparison.move_in_capture_id == Capture.id)

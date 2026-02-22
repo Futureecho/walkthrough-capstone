@@ -3,19 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Owner Dashboard</title>
+<title>Dashboard - PropertyInspect</title>
 <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 <div class="header">
   <div class="flex-between">
     <div>
-      <h1>Owner Dashboard</h1>
-      <div class="subtitle">Property Management</div>
+      <h1>Dashboard</h1>
+      <div class="subtitle" id="user-info">Property Management</div>
     </div>
-    <div style="display:flex;gap:.5rem;align-items:center">
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
       <a href="/owner/properties" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Properties</a>
       <a href="/owner/settings" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Settings</a>
+      <button id="admin-btn" class="btn hidden" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Admin</button>
       <button id="logout-btn" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Logout</button>
     </div>
   </div>
@@ -38,6 +39,36 @@
     <div id="pending-review">
       <div class="spinner"></div>
     </div>
+  </div>
+
+  <!-- Admin Panel (hidden unless admin role) -->
+  <div class="card hidden" id="admin-panel">
+    <h2>Team Management</h2>
+    <p class="text-muted mb-1">Manage users and invites</p>
+
+    <!-- Invite Form -->
+    <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <input type="email" id="invite-email" placeholder="email@example.com" style="flex:1;min-width:200px">
+      <select id="invite-role" style="width:auto">
+        <option value="inspector">Inspector</option>
+        <option value="viewer">Viewer</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="btn btn-primary" id="invite-btn" style="padding:.4rem .8rem">Invite</button>
+    </div>
+    <div id="invite-msg" style="font-size:.85rem;margin-bottom:.5rem"></div>
+
+    <!-- User List -->
+    <div id="user-list">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Export (admin only) -->
+  <div class="card hidden" id="export-card">
+    <h2>Data Export</h2>
+    <p class="text-muted mb-1">Download company data</p>
+    <button class="btn btn-primary" id="export-full-btn">Export All Data (ZIP)</button>
   </div>
 </div>
 

@@ -179,7 +179,8 @@ async function doSubmit() {
   btn.textContent = 'Submitting...';
 
   try {
-    const r = await fetch(`/api/sessions/${sessionData.session_id}/status`, {
+    const tokenParam = tenantToken ? `?token=${encodeURIComponent(tenantToken)}` : '';
+    const r = await fetch(`/api/sessions/${sessionData.session_id}/status${tokenParam}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ report_status: 'pending_review' }),

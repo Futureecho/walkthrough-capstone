@@ -7,8 +7,7 @@ from app.schemas.capture_image import CaptureImageRead
 from app.schemas.annotation import AnnotationCreate, AnnotationRead
 from app.schemas.comparison import ComparisonRead
 from app.schemas.candidate import CandidateRead, CandidateResponse, CandidateOwnerUpdate
-from app.schemas.owner import OwnerLogin, OwnerRead
-from app.schemas.owner_settings import OwnerSettingsRead, OwnerSettingsUpdate
+from app.schemas.owner_settings import CompanySettingsRead, CompanySettingsUpdate
 from app.schemas.room_template import RoomTemplateCreate, RoomTemplateRead, RoomTemplateUpdate
 from app.schemas.tenant_link import TenantLinkCreate, TenantLinkRead
 from app.schemas.ws_messages import WSMessage
@@ -21,8 +20,7 @@ __all__ = [
     "AnnotationCreate", "AnnotationRead",
     "ComparisonRead",
     "CandidateRead", "CandidateResponse", "CandidateOwnerUpdate",
-    "OwnerLogin", "OwnerRead",
-    "OwnerSettingsRead", "OwnerSettingsUpdate",
+    "CompanySettingsRead", "CompanySettingsUpdate",
     "RoomTemplateCreate", "RoomTemplateRead", "RoomTemplateUpdate",
     "TenantLinkCreate", "TenantLinkRead",
     "WSMessage",
