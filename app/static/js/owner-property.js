@@ -134,13 +134,20 @@ function renderRoomTemplates(templates) {
       <option value="360"${rt.capture_mode === '360' ? ' selected' : ''}>360°</option>
     `;
     modeSelect.addEventListener('change', async () => {
+      const newMode = modeSelect.value;
       const r = await fetch(`/api/owner/rooms/${rt.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ capture_mode: modeSelect.value }),
+        body: JSON.stringify({ capture_mode: newMode }),
       });
-      if (r.ok) showDetail(currentPropertyId);
-      else alert('Failed to update capture mode');
+      if (!r.ok) { alert('Failed to update capture mode'); return; }
+      if (newMode === 'traditional') {
+        // Go straight to position builder
+        window.location.href = `/owner/position?room=${rt.id}&property=${currentPropertyId}`;
+      } else {
+        // 360 — no positions to configure, just refresh to show the 360 state
+        showDetail(currentPropertyId);
+      }
     });
     modeRow.appendChild(modeLabel);
     modeRow.appendChild(modeSelect);
