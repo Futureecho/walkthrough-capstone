@@ -20,6 +20,34 @@
 </div>
 
 <div class="container">
+  <!-- Team Management -->
+  <div class="card" id="admin-panel">
+    <h2>Team Management</h2>
+    <p class="text-muted mb-1">Generate shareable invite links</p>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <button class="btn btn-primary" id="invite-admin-btn" style="padding:.4rem .8rem">Admin Invite</button>
+      <button class="btn btn-primary" id="invite-inspector-btn" style="padding:.4rem .8rem">Inspector Invite</button>
+      <button class="btn btn-primary" id="invite-referral-btn" style="padding:.4rem .8rem">Referral Link</button>
+    </div>
+
+    <div id="link-result" class="hidden" style="margin-top:.5rem">
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <input type="text" id="link-url" readonly style="flex:1;font-size:.85rem;background:var(--bg-secondary)">
+        <button class="btn btn-primary" id="copy-link-btn" style="padding:.4rem .8rem;white-space:nowrap">Copy</button>
+      </div>
+      <p class="text-muted" style="font-size:.8rem;margin-top:.25rem">Link expires in 7 days</p>
+    </div>
+  </div>
+
+  <!-- Data Export -->
+  <div class="card" id="export-card">
+    <h2>Data Export</h2>
+    <p class="text-muted mb-1">Download company data</p>
+    <button class="btn btn-primary" id="export-full-btn">Export All Data (ZIP)</button>
+  </div>
+
+  <!-- Users -->
   <div class="card">
     <h2>Users</h2>
     <p class="text-muted mb-1">Manage team members</p>

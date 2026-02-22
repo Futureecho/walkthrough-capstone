@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('back-to-list').addEventListener('click', showList);
   document.getElementById('add-position-btn').addEventListener('click', addPositionField);
   document.getElementById('add-room-btn').addEventListener('click', addRoomTemplate);
-  document.getElementById('req-link-btn').addEventListener('click', requestLink);
 });
 
 async function loadProperties() {
@@ -74,9 +73,6 @@ async function showDetail(propertyId) {
 
   // Room templates
   renderRoomTemplates(prop.room_templates || []);
-
-  // Sessions
-  renderSessions(prop.sessions || []);
 
   // Hide list
   document.querySelector('#property-list').parentElement.classList.add('hidden');
@@ -222,69 +218,3 @@ async function addRoomTemplate() {
   showDetail(currentPropertyId);
 }
 
-async function requestLink() {
-  if (!currentPropertyId) return;
-  const session_type = document.getElementById('req-type').value;
-  const tenant_name = document.getElementById('req-tenant').value.trim();
-  const tenant_name_2 = document.getElementById('req-tenant2').value.trim();
-  const duration_days = parseInt(document.getElementById('req-days').value) || 7;
-
-  if (!tenant_name) return alert('Tenant name is required');
-
-  const r = await fetch(`/api/owner/properties/${currentPropertyId}/sessions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_type, tenant_name, tenant_name_2, duration_days }),
-  });
-  if (!r.ok) return alert('Failed to generate link');
-  const data = await r.json();
-
-  const fullUrl = `${window.location.origin}${data.url}`;
-  const resultDiv = document.getElementById('link-result');
-  resultDiv.classList.remove('hidden');
-  resultDiv.innerHTML = `
-    <strong>Tenant Link:</strong><br>
-    <a href="${fullUrl}" target="_blank" style="word-break:break-all">${fullUrl}</a>
-    <br><span class="text-muted" style="font-size:.85rem">Expires in ${duration_days} day(s)</span>
-    <div class="flex gap-1 mt-1">
-      <button class="btn btn-outline" style="padding:.3rem .6rem;font-size:.85rem" onclick="navigator.clipboard.writeText('${fullUrl}')">Copy Link</button>
-    </div>
-    <div id="link-qr" class="mt-1" style="text-align:center"></div>
-    <p class="text-muted mt-1" style="font-size:.8rem;text-align:center">Scan with phone camera to open</p>
-  `;
-  new QRCode(document.getElementById('link-qr'), {
-    text: fullUrl,
-    width: 200,
-    height: 200,
-    correctLevel: QRCode.CorrectLevel.M,
-  });
-
-  showDetail(currentPropertyId);
-}
-
-function renderSessions(sessions) {
-  const div = document.getElementById('session-list');
-  if (!sessions.length) {
-    div.innerHTML = '<p class="text-muted">No sessions yet</p>';
-    return;
-  }
-  div.innerHTML = '';
-  sessions.forEach(s => {
-    const el = document.createElement('div');
-    el.className = 'room-item';
-    el.style.cursor = 'pointer';
-    const badgeClass = s.report_status === 'published' ? 'badge-success'
-      : s.report_status === 'active' ? 'badge-info' : 'badge-warning';
-    el.innerHTML = `
-      <div>
-        <strong>${s.tenant_name}</strong>${s.tenant_name_2 ? ' & ' + s.tenant_name_2 : ''}
-        <br><span class="text-muted" style="font-size:.85rem">${s.type.replace('_', '-')} &middot; ${new Date(s.created_at).toLocaleDateString()}</span>
-      </div>
-      <span class="badge ${badgeClass}">${s.report_status.replace(/_/g, ' ')}</span>
-    `;
-    el.addEventListener('click', () => {
-      window.location.href = `/owner/reports/${s.id}`;
-    });
-    div.appendChild(el);
-  });
-}

@@ -52,27 +52,9 @@
       <button class="btn btn-primary btn-block" id="add-room-btn">Add Room Template</button>
     </div>
 
-    <!-- Request Inspection -->
-    <h3 class="mt-2">Request Inspection</h3>
-    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem">
-      <select id="req-type">
-        <option value="move_in">Move-In</option>
-        <option value="move_out">Move-Out</option>
-      </select>
-      <input type="text" id="req-tenant" placeholder="Tenant name">
-      <input type="text" id="req-tenant2" placeholder="Second tenant (optional)">
-      <input type="number" id="req-days" value="7" min="1" max="90" placeholder="Link duration (days)">
-      <button class="btn btn-success btn-block" id="req-link-btn">Generate Tenant Link</button>
-      <div id="link-result" class="hidden mt-1" style="padding:.5rem;background:#dcfce7;border-radius:var(--radius)"></div>
-    </div>
-
-    <!-- Published Reports -->
-    <h3 class="mt-2">Sessions</h3>
-    <div id="session-list"></div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="/static/js/owner-property.js"></script>
 </body>
 </html>

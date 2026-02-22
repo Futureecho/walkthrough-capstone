@@ -18,6 +18,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await loadUsers();
+
+  // Invite link buttons
+  document.getElementById('invite-admin-btn').addEventListener('click', () => generateLink('admin'));
+  document.getElementById('invite-inspector-btn').addEventListener('click', () => generateLink('inspector'));
+  document.getElementById('invite-referral-btn').addEventListener('click', () => generateLink('referral'));
+
+  // Export button
+  document.getElementById('export-full-btn').addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/owner/export/full');
+      if (!r.ok) throw new Error('Export failed');
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'company_export.zip'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Export failed: ' + e.message);
+    }
+  });
 });
 
 async function loadUsers() {
@@ -103,4 +123,34 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// ── Generate Invite Link ────────────────────────────────
+
+async function generateLink(type) {
+  const resultDiv = document.getElementById('link-result');
+  const urlInput = document.getElementById('link-url');
+
+  try {
+    const r = await fetch('/api/admin/invite-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type }),
+    });
+    const data = await r.json();
+    if (!r.ok) { alert(data.detail || 'Failed'); return; }
+
+    const fullUrl = `${window.location.origin}${data.url}`;
+    urlInput.value = fullUrl;
+    resultDiv.classList.remove('hidden');
+
+    document.getElementById('copy-link-btn').onclick = () => {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        document.getElementById('copy-link-btn').textContent = 'Copied!';
+        setTimeout(() => { document.getElementById('copy-link-btn').textContent = 'Copy'; }, 2000);
+      });
+    };
+  } catch (e) {
+    alert('Connection error');
+  }
 }

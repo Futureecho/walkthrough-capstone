@@ -41,34 +41,37 @@
     </div>
   </div>
 
-  <!-- Team Management (hidden unless admin role) -->
-  <div class="card hidden" id="admin-panel">
-    <h2>Team Management</h2>
-    <p class="text-muted mb-1">Generate shareable invite links</p>
+  <!-- Schedule Walkthru -->
+  <div class="card" id="schedule-card">
+    <h2>Schedule Walkthru</h2>
+    <p class="text-muted mb-1">Generate a tenant inspection link</p>
 
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
-      <button class="btn btn-primary" onclick="generateLink('admin')" style="padding:.4rem .8rem">Admin Invite</button>
-      <button class="btn btn-primary" onclick="generateLink('inspector')" style="padding:.4rem .8rem">Inspector Invite</button>
-      <button class="btn btn-primary" onclick="generateLink('referral')" style="padding:.4rem .8rem">Referral Link</button>
+    <!-- Property picker -->
+    <div id="schedule-picker">
+      <button class="btn btn-primary btn-block" id="schedule-start-btn">Select a Property</button>
+      <div id="schedule-property-list" class="hidden mt-1"></div>
     </div>
 
-    <div id="link-result" class="hidden" style="margin-top:.5rem">
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <input type="text" id="link-url" readonly style="flex:1;font-size:.85rem;background:var(--bg-secondary)">
-        <button class="btn btn-primary" id="copy-link-btn" style="padding:.4rem .8rem;white-space:nowrap">Copy</button>
-      </div>
-      <p class="text-muted" style="font-size:.8rem;margin-top:.25rem">Link expires in 7 days</p>
+    <!-- Scheduling form (hidden until property selected) -->
+    <div id="schedule-form" class="hidden">
+      <p class="mb-1"><strong id="schedule-prop-label"></strong> <span class="text-muted" id="schedule-prop-addr"></span></p>
+      <select id="sched-type">
+        <option value="move_in">Move-In</option>
+        <option value="move_out">Move-Out</option>
+      </select>
+      <input type="text" id="sched-tenant" placeholder="Tenant name">
+      <input type="text" id="sched-tenant2" placeholder="Second tenant (optional)">
+      <input type="number" id="sched-days" value="7" min="1" max="90" placeholder="Link duration (days)">
+      <button class="btn btn-success btn-block" id="sched-generate-btn">Generate Tenant Link</button>
+      <a href="#" id="sched-back-link" class="text-muted" style="display:block;text-align:center;margin-top:.5rem;font-size:.85rem">Back to property list</a>
     </div>
-  </div>
 
-  <!-- Export (admin only) -->
-  <div class="card hidden" id="export-card">
-    <h2>Data Export</h2>
-    <p class="text-muted mb-1">Download company data</p>
-    <button class="btn btn-primary" id="export-full-btn">Export All Data (ZIP)</button>
+    <!-- Result (hidden until link generated) -->
+    <div id="schedule-result" class="hidden mt-1" style="padding:.75rem;background:#dcfce7;border-radius:var(--radius)"></div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="/static/js/owner.js"></script>
 </body>
 </html>
