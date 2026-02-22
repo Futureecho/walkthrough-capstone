@@ -1,4 +1,4 @@
-/* owner-position.js — Position builder with camera viewfinder */
+/* owner-position.js — Position builder with camera viewfinder + alignment assist */
 
 let propertyId = null;
 let roomId = null;
@@ -12,6 +12,17 @@ let existingRefImage = null; // {id, thumbnail_url} when editing
 
 // States: 'live' | 'frozen' | 'accepted'
 let viewState = 'live';
+
+// Alignment assist state
+let alignCanvas = null;
+let alignCtx = null;
+let refGray = null;        // Float32Array of grayscale reference pixels
+let alignInterval = null;
+let goodFrames = 0;        // consecutive frames above threshold
+const ALIGN_W = 64;
+const ALIGN_H = 48;
+const ALIGN_THRESHOLD = 0.55;  // NCC score to consider "aligned"
+const AUTO_CAPTURE_FRAMES = 4; // ~1.2s of good alignment before auto-capture
 
 const params = new URLSearchParams(window.location.search);
 
@@ -38,6 +49,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Set page title
   document.getElementById('page-title').textContent = editIndex !== null ? 'Edit Position' : 'Add Position';
+
+  // Prep alignment canvas (offscreen)
+  alignCanvas = document.createElement('canvas');
+  alignCanvas.width = ALIGN_W;
+  alignCanvas.height = ALIGN_H;
+  alignCtx = alignCanvas.getContext('2d', { willReadFrequently: true });
 
   await loadRoomData();
   await startCamera();
@@ -71,7 +88,6 @@ async function loadRoomData() {
       if (ref && ref.thumbnail_url) {
         existingRefImage = ref;
         capturedUrl = ref.thumbnail_url;
-        // Show as accepted state — frozen frame with existing image
         setAcceptedState(ref.thumbnail_url);
       }
     }
@@ -118,6 +134,8 @@ function capturePhoto() {
   const video = document.getElementById('camera');
   if (!video || !stream) return;
 
+  stopAlignment();
+
   const canvas = document.getElementById('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -134,12 +152,13 @@ function capturePhoto() {
     frozen.style.display = 'block';
     document.getElementById('camera').style.display = 'none';
 
-    // Swap buttons: hide Capture + Save/Discard, show Accept/Retake
+    // Swap buttons: hide Capture + Save/Discard + Ghost, show Accept/Retake
     document.getElementById('capture-btn').classList.add('hidden');
     document.getElementById('review-btns').classList.remove('hidden');
     document.getElementById('ghost-btn').classList.add('hidden');
     document.getElementById('bottom-btns').classList.add('hidden');
     removeGhostOverlay();
+    hideAlignmentRing();
 
     viewState = 'frozen';
   }, 'image/jpeg', 0.92);
@@ -149,11 +168,12 @@ function acceptPhoto() {
   // Store the captured URL for ghost overlay use
   capturedUrl = document.getElementById('frozen-frame').src;
 
-  // Return to live camera
-  resumeLiveCamera();
-
-  // Show ghost test button
+  // Keep frozen frame visible — don't resume live camera yet
+  // Swap buttons: hide Accept/Retake, show Capture + Ghost + Save/Discard
+  document.getElementById('review-btns').classList.add('hidden');
+  document.getElementById('capture-btn').classList.remove('hidden');
   document.getElementById('ghost-btn').classList.remove('hidden');
+  document.getElementById('bottom-btns').classList.remove('hidden');
 
   viewState = 'accepted';
   updateSaveState();
@@ -164,12 +184,12 @@ function retake() {
   capturedUrl = null;
   existingRefImage = null;
 
-  // Return to live camera
   resumeLiveCamera();
 
-  // Hide ghost button
   document.getElementById('ghost-btn').classList.add('hidden');
   removeGhostOverlay();
+  stopAlignment();
+  hideAlignmentRing();
 
   viewState = 'live';
   updateSaveState();
@@ -179,14 +199,13 @@ function resumeLiveCamera() {
   document.getElementById('frozen-frame').style.display = 'none';
   document.getElementById('camera').style.display = '';
 
-  // Swap buttons: show Capture + Save/Discard, hide Accept/Retake
   document.getElementById('capture-btn').classList.remove('hidden');
   document.getElementById('review-btns').classList.add('hidden');
   document.getElementById('bottom-btns').classList.remove('hidden');
 }
 
 function setAcceptedState(url) {
-  // Used when editing with an existing ref image — show live camera + ghost available
+  // Used when editing with an existing ref image
   capturedUrl = url;
   document.getElementById('ghost-btn').classList.remove('hidden');
   viewState = 'accepted';
@@ -200,11 +219,25 @@ function toggleTestGhost() {
   const existing = viewfinder.querySelector('#ghost-overlay');
 
   if (existing) {
+    // Turn off ghost — go back to frozen frame if we have one
     removeGhostOverlay();
+    stopAlignment();
+    hideAlignmentRing();
+
+    // If we had a capture, show frozen frame again
+    if (capturedUrl && viewState === 'accepted') {
+      document.getElementById('frozen-frame').src = capturedUrl;
+      document.getElementById('frozen-frame').style.display = 'block';
+      document.getElementById('camera').style.display = 'none';
+    }
     return;
   }
 
   if (!capturedUrl) return;
+
+  // Switch to live camera with ghost overlay
+  document.getElementById('frozen-frame').style.display = 'none';
+  document.getElementById('camera').style.display = '';
 
   const img = document.createElement('img');
   img.id = 'ghost-overlay';
@@ -213,6 +246,9 @@ function toggleTestGhost() {
   viewfinder.appendChild(img);
   ghostActive = true;
   document.getElementById('ghost-btn').textContent = 'Hide Ghost Overlay';
+
+  // Start alignment comparison
+  prepareRefData(capturedUrl);
 }
 
 function removeGhostOverlay() {
@@ -220,6 +256,114 @@ function removeGhostOverlay() {
   if (existing) existing.remove();
   ghostActive = false;
   document.getElementById('ghost-btn').textContent = 'Test Ghost Overlay';
+}
+
+// ── Alignment assist (NCC on downscaled grayscale) ───────
+
+function prepareRefData(url) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    alignCtx.drawImage(img, 0, 0, ALIGN_W, ALIGN_H);
+    const data = alignCtx.getImageData(0, 0, ALIGN_W, ALIGN_H);
+    refGray = toGrayscale(data);
+    goodFrames = 0;
+    startAlignment();
+  };
+  img.src = url;
+}
+
+function startAlignment() {
+  stopAlignment();
+  alignInterval = setInterval(compareFrame, 300);
+}
+
+function stopAlignment() {
+  if (alignInterval) { clearInterval(alignInterval); alignInterval = null; }
+  refGray = null;
+  goodFrames = 0;
+}
+
+function compareFrame() {
+  const video = document.getElementById('camera');
+  if (!video || video.paused || !refGray || !ghostActive) return;
+  if (video.style.display === 'none') return;
+
+  // Grab current frame, downscale, grayscale
+  alignCtx.drawImage(video, 0, 0, ALIGN_W, ALIGN_H);
+  const data = alignCtx.getImageData(0, 0, ALIGN_W, ALIGN_H);
+  const liveGray = toGrayscale(data);
+
+  const score = ncc(refGray, liveGray);
+  updateAlignmentRing(score);
+
+  if (score >= ALIGN_THRESHOLD) {
+    goodFrames++;
+    if (goodFrames >= AUTO_CAPTURE_FRAMES) {
+      // Auto-capture!
+      stopAlignment();
+      capturePhoto();
+    }
+  } else {
+    goodFrames = 0;
+  }
+}
+
+function toGrayscale(imageData) {
+  const len = imageData.width * imageData.height;
+  const gray = new Float32Array(len);
+  const d = imageData.data;
+  for (let i = 0; i < len; i++) {
+    gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  }
+  return gray;
+}
+
+function ncc(a, b) {
+  let meanA = 0, meanB = 0;
+  const n = a.length;
+  for (let i = 0; i < n; i++) { meanA += a[i]; meanB += b[i]; }
+  meanA /= n; meanB /= n;
+
+  let num = 0, denA = 0, denB = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    num += da * db;
+    denA += da * da;
+    denB += db * db;
+  }
+  const den = Math.sqrt(denA * denB);
+  return den === 0 ? 0 : num / den;
+}
+
+function updateAlignmentRing(score) {
+  const viewfinder = document.getElementById('viewfinder');
+  // Color: red → yellow → green based on score
+  let color;
+  if (score < 0.3) color = 'rgba(255,68,102,0.7)';       // red
+  else if (score < ALIGN_THRESHOLD) color = 'rgba(255,170,0,0.7)'; // yellow
+  else color = 'rgba(0,214,143,0.8)';                     // green
+
+  viewfinder.style.boxShadow = `inset 0 0 0 3px ${color}, 0 0 12px ${color}`;
+
+  // Update or create score label
+  let label = viewfinder.querySelector('#align-score');
+  if (!label) {
+    label = document.createElement('div');
+    label.id = 'align-score';
+    label.style.cssText = 'position:absolute;top:.5rem;left:.5rem;background:rgba(0,0,0,.6);color:#fff;padding:.15rem .4rem;border-radius:4px;font-size:.75rem;z-index:10;font-variant-numeric:tabular-nums';
+    viewfinder.appendChild(label);
+  }
+  label.textContent = `${Math.round(score * 100)}%`;
+  label.style.color = color;
+}
+
+function hideAlignmentRing() {
+  const viewfinder = document.getElementById('viewfinder');
+  viewfinder.style.boxShadow = '';
+  const label = viewfinder.querySelector('#align-score');
+  if (label) label.remove();
 }
 
 // ── Save / Discard ───────────────────────────────────────
@@ -279,5 +423,6 @@ function discard() {
 }
 
 window.addEventListener('beforeunload', () => {
+  stopAlignment();
   if (stream) stream.getTracks().forEach(t => t.stop());
 });
