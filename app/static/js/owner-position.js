@@ -21,7 +21,7 @@ let alignInterval = null;
 let goodFrames = 0;        // consecutive frames above threshold
 const ALIGN_W = 64;
 const ALIGN_H = 48;
-const ALIGN_THRESHOLD = 0.55;  // NCC score to consider "aligned"
+const ALIGN_THRESHOLD = 0.95;  // NCC score to consider "aligned"
 const AUTO_CAPTURE_FRAMES = 4; // ~1.2s of good alignment before auto-capture
 
 const params = new URLSearchParams(window.location.search);
@@ -360,7 +360,7 @@ function updateAlignmentRing(score) {
   const viewfinder = document.getElementById('viewfinder');
   // Color: red → yellow → green based on score
   let color;
-  if (score < 0.3) color = 'rgba(255,68,102,0.7)';       // red
+  if (score < 0.7) color = 'rgba(255,68,102,0.7)';       // red
   else if (score < ALIGN_THRESHOLD) color = 'rgba(255,170,0,0.7)'; // yellow
   else color = 'rgba(0,214,143,0.8)';                     // green
 
