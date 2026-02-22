@@ -6,8 +6,12 @@ let editIndex = null; // null = add mode, number = edit mode
 let roomData = null;  // full room template object
 let stream = null;
 let capturedBlob = null;
+let capturedUrl = null; // object URL for the accepted capture
 let ghostActive = false;
 let existingRefImage = null; // {id, thumbnail_url} when editing
+
+// States: 'live' | 'frozen' | 'accepted'
+let viewState = 'live';
 
 const params = new URLSearchParams(window.location.search);
 
@@ -24,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Wire up buttons
   document.getElementById('capture-btn').addEventListener('click', capturePhoto);
+  document.getElementById('accept-btn').addEventListener('click', acceptPhoto);
   document.getElementById('retake-btn').addEventListener('click', retake);
   document.getElementById('ghost-btn').addEventListener('click', toggleTestGhost);
   document.getElementById('save-btn').addEventListener('click', savePosition);
@@ -54,19 +59,20 @@ async function loadRoomData() {
 
     document.getElementById('room-subtitle').textContent = roomData.name;
 
-    // If editing, populate fields
+    // If editing, populate fields and show existing ref in viewfinder
     if (editIndex !== null && roomData.positions && roomData.positions[editIndex]) {
       const pos = roomData.positions[editIndex];
       document.getElementById('position-name').value = pos.label || '';
       onNameInput();
 
-      // Load existing reference image
       const hint = pos.hint || pos.label;
       const refImages = roomData.reference_images || [];
       const ref = refImages.find(img => img.position_hint === hint);
       if (ref && ref.thumbnail_url) {
         existingRefImage = ref;
-        showPreview(ref.thumbnail_url);
+        capturedUrl = ref.thumbnail_url;
+        // Show as accepted state — frozen frame with existing image
+        setAcceptedState(ref.thumbnail_url);
       }
     }
   } catch (e) {
@@ -86,7 +92,6 @@ async function startCamera() {
     });
     document.getElementById('camera').srcObject = stream;
   } catch (e) {
-    // Camera not available — still allow file-based workflow in edit mode
     document.getElementById('viewfinder').innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--text-muted);font-size:.9rem;padding:1rem;text-align:center">
         Camera not available.<br>Use a mobile device to capture reference photos.
@@ -99,16 +104,15 @@ function onNameInput() {
   const name = document.getElementById('position-name').value.trim();
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   document.getElementById('guide-label').textContent = slug || 'position name';
-
-  // Enable save if we have a name and either a capture or existing ref
   updateSaveState();
 }
 
 function updateSaveState() {
   const name = document.getElementById('position-name').value.trim();
-  const hasPhoto = capturedBlob || existingRefImage;
   document.getElementById('save-btn').disabled = !name;
 }
+
+// ── Capture flow: live → frozen → accepted ───────────────
 
 function capturePhoto() {
   const video = document.getElementById('camera');
@@ -121,50 +125,90 @@ function capturePhoto() {
 
   canvas.toBlob(blob => {
     capturedBlob = blob;
-    existingRefImage = null; // new capture replaces existing
+    existingRefImage = null;
     const url = URL.createObjectURL(blob);
-    showPreview(url);
+
+    // Freeze: show still in viewfinder, hide video
+    const frozen = document.getElementById('frozen-frame');
+    frozen.src = url;
+    frozen.style.display = 'block';
+    document.getElementById('camera').style.display = 'none';
+
+    // Swap buttons: hide Capture, show Accept/Retake
+    document.getElementById('capture-btn').classList.add('hidden');
+    document.getElementById('review-btns').classList.remove('hidden');
+    document.getElementById('ghost-btn').classList.add('hidden');
+    removeGhostOverlay();
+
+    viewState = 'frozen';
   }, 'image/jpeg', 0.92);
 }
 
-function showPreview(url) {
-  document.getElementById('preview-img').src = url;
-  document.getElementById('preview-card').classList.remove('hidden');
+function acceptPhoto() {
+  // Store the captured URL for ghost overlay use
+  capturedUrl = document.getElementById('frozen-frame').src;
+
+  // Return to live camera
+  resumeLiveCamera();
+
+  // Show ghost test button
   document.getElementById('ghost-btn').classList.remove('hidden');
+
+  viewState = 'accepted';
   updateSaveState();
 }
 
 function retake() {
   capturedBlob = null;
+  capturedUrl = null;
   existingRefImage = null;
-  document.getElementById('preview-card').classList.add('hidden');
+
+  // Return to live camera
+  resumeLiveCamera();
+
+  // Hide ghost button
   document.getElementById('ghost-btn').classList.add('hidden');
   removeGhostOverlay();
+
+  viewState = 'live';
   updateSaveState();
 }
 
+function resumeLiveCamera() {
+  document.getElementById('frozen-frame').style.display = 'none';
+  document.getElementById('camera').style.display = '';
+
+  // Swap buttons: show Capture, hide Accept/Retake
+  document.getElementById('capture-btn').classList.remove('hidden');
+  document.getElementById('review-btns').classList.add('hidden');
+}
+
+function setAcceptedState(url) {
+  // Used when editing with an existing ref image — show live camera + ghost available
+  capturedUrl = url;
+  document.getElementById('ghost-btn').classList.remove('hidden');
+  viewState = 'accepted';
+  updateSaveState();
+}
+
+// ── Ghost overlay on the viewfinder ──────────────────────
+
 function toggleTestGhost() {
-  const previewCard = document.getElementById('preview-card');
-  const existing = previewCard.querySelector('#ghost-overlay');
+  const viewfinder = document.getElementById('viewfinder');
+  const existing = viewfinder.querySelector('#ghost-overlay');
 
   if (existing) {
     removeGhostOverlay();
     return;
   }
 
-  // Overlay ghost on the preview image container
-  const previewImg = document.getElementById('preview-img');
-  if (!previewImg.src) return;
-
-  // Make preview card position-relative for overlay
-  previewCard.style.position = 'relative';
-  previewCard.style.overflow = 'hidden';
+  if (!capturedUrl) return;
 
   const img = document.createElement('img');
   img.id = 'ghost-overlay';
   img.alt = 'Ghost reference overlay';
-  img.src = previewImg.src;
-  previewCard.appendChild(img);
+  img.src = capturedUrl;
+  viewfinder.appendChild(img);
   ghostActive = true;
   document.getElementById('ghost-btn').textContent = 'Hide Ghost Overlay';
 }
@@ -176,6 +220,8 @@ function removeGhostOverlay() {
   document.getElementById('ghost-btn').textContent = 'Test Ghost Overlay';
 }
 
+// ── Save / Discard ───────────────────────────────────────
+
 async function savePosition() {
   const name = document.getElementById('position-name').value.trim();
   if (!name) return alert('Position name is required');
@@ -186,15 +232,12 @@ async function savePosition() {
   saveBtn.textContent = 'Saving...';
 
   try {
-    // Build updated positions array
     const positions = [...(roomData.positions || [])];
     const newPos = { label: name, hint: hint };
 
     if (editIndex !== null) {
-      // Check if hint changed — need to clean up old ref image
       const oldHint = positions[editIndex]?.hint || positions[editIndex]?.label;
       if (oldHint && oldHint !== hint && existingRefImage) {
-        // Old hint differs, delete old ref image
         await fetch(`/api/owner/reference-images/${existingRefImage.id}`, { method: 'DELETE' });
         existingRefImage = null;
       }
@@ -203,7 +246,6 @@ async function savePosition() {
       positions.push(newPos);
     }
 
-    // Update room template positions
     const r = await fetch(`/api/owner/rooms/${roomId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -211,7 +253,6 @@ async function savePosition() {
     });
     if (!r.ok) throw new Error('Failed to update room template');
 
-    // Upload reference photo if captured
     if (capturedBlob) {
       const form = new FormData();
       form.append('file', capturedBlob, 'reference.jpg');
@@ -223,7 +264,6 @@ async function savePosition() {
       if (!ur.ok) throw new Error('Failed to upload reference photo');
     }
 
-    // Navigate back to property page
     window.location.href = `/owner/properties?property=${propertyId}`;
   } catch (e) {
     alert(e.message);
@@ -236,7 +276,6 @@ function discard() {
   window.location.href = `/owner/properties?property=${propertyId}`;
 }
 
-// Cleanup on unload
 window.addEventListener('beforeunload', () => {
   if (stream) stream.getTracks().forEach(t => t.stop());
 });

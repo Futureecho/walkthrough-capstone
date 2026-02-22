@@ -30,26 +30,22 @@
     <input type="text" id="position-name" placeholder="e.g. Center from Door">
   </div>
 
-  <!-- Camera viewfinder -->
+  <!-- Camera viewfinder — everything happens in here -->
   <div class="viewfinder" id="viewfinder">
     <video id="camera" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
+    <img id="frozen-frame" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;z-index:3">
     <div class="guide-label" id="guide-label">position name</div>
   </div>
 
-  <!-- Capture button -->
+  <!-- Buttons below viewfinder — swap depending on state -->
   <button class="btn btn-primary btn-block" id="capture-btn">Capture Reference Photo</button>
 
-  <!-- Preview card (hidden until capture) -->
-  <div class="card hidden" id="preview-card" style="margin-top:.75rem">
-    <div class="flex-between mb-1">
-      <strong>Captured Photo</strong>
-      <button class="btn btn-ghost" id="retake-btn" style="padding:.2rem .5rem;font-size:.85rem">Retake</button>
-    </div>
-    <img id="preview-img" style="width:100%;border-radius:var(--radius);aspect-ratio:4/3;object-fit:cover">
+  <div class="flex gap-1 hidden" id="review-btns">
+    <button class="btn btn-primary" style="flex:1" id="accept-btn">Accept</button>
+    <button class="btn" style="flex:1;background:var(--border)" id="retake-btn">Retake</button>
   </div>
 
-  <!-- Test Ghost button (hidden until capture) -->
   <button class="btn btn-outline btn-block hidden" id="ghost-btn" style="margin-top:.5rem">Test Ghost Overlay</button>
 
   <!-- Save / Discard -->
@@ -59,6 +55,6 @@
   </div>
 </div>
 
-<script src="/static/js/owner-position.js?v=1"></script>
+<script src="/static/js/owner-position.js?v=2"></script>
 </body>
 </html>
