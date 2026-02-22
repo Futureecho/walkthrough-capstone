@@ -134,10 +134,11 @@ function capturePhoto() {
     frozen.style.display = 'block';
     document.getElementById('camera').style.display = 'none';
 
-    // Swap buttons: hide Capture, show Accept/Retake
+    // Swap buttons: hide Capture + Save/Discard, show Accept/Retake
     document.getElementById('capture-btn').classList.add('hidden');
     document.getElementById('review-btns').classList.remove('hidden');
     document.getElementById('ghost-btn').classList.add('hidden');
+    document.getElementById('bottom-btns').classList.add('hidden');
     removeGhostOverlay();
 
     viewState = 'frozen';
@@ -178,9 +179,10 @@ function resumeLiveCamera() {
   document.getElementById('frozen-frame').style.display = 'none';
   document.getElementById('camera').style.display = '';
 
-  // Swap buttons: show Capture, hide Accept/Retake
+  // Swap buttons: show Capture + Save/Discard, hide Accept/Retake
   document.getElementById('capture-btn').classList.remove('hidden');
   document.getElementById('review-btns').classList.add('hidden');
+  document.getElementById('bottom-btns').classList.remove('hidden');
 }
 
 function setAcceptedState(url) {

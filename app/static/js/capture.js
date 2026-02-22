@@ -595,7 +595,7 @@ function toggleGhost() {
   const btn = document.getElementById('ghost-toggle');
   if (!img || !btn) return;
   ghostVisible = !ghostVisible;
-  img.style.opacity = ghostVisible ? '0.30' : '0';
+  img.style.opacity = ghostVisible ? '0.40' : '0';
   btn.classList.toggle('ghost-toggle-off', !ghostVisible);
 }
 
