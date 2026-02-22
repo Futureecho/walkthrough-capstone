@@ -20,3 +20,5 @@ class Session(Base, ULIDMixin):
     property = relationship("Property", back_populates="sessions")
     captures = relationship("Capture", back_populates="session", lazy="selectin")
     tenant_links = relationship("TenantLink", back_populates="session", lazy="selectin")
+    concerns = relationship("Concern", back_populates="session", lazy="selectin")
+    work_orders = relationship("WorkOrder", back_populates="session", lazy="selectin")

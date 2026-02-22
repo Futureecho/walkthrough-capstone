@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadReport();
 
   document.getElementById('publish-btn').addEventListener('click', publishReport);
+  document.getElementById('dispatch-btn').addEventListener('click', () => {
+    window.location.href = `/owner/dispatch?session=${reportSessionId}`;
+  });
   document.getElementById('reactivate-btn').addEventListener('click', reactivateReport);
   document.getElementById('cancel-btn').addEventListener('click', cancelReport);
   document.getElementById('pdf-yes').addEventListener('click', generatePdf);
@@ -41,8 +44,14 @@ async function loadReport() {
     const cr = await fetch(`/api/comparisons?property_id=${session.property_id}`);
     const comparisons = cr.ok ? await cr.json() : [];
 
-    reportData = { session, property, comparisons };
+    // Fetch concerns
+    const conR = await fetch(`/api/owner/sessions/${reportSessionId}/concerns`);
+    const concerns = conR.ok ? await conR.json() : [];
+
+    reportData = { session, property, comparisons, concerns };
     renderReport();
+    renderConcerns(concerns);
+    await loadWorkOrders();
   } catch (e) {
     document.getElementById('report-header').innerHTML =
       `<p class="text-muted">Error loading report: ${e.message}</p>`;
@@ -245,6 +254,62 @@ function updateSummary() {
     publishBtn.classList.add('hidden');
     cancelBtn.classList.add('hidden');
   }
+}
+
+function renderConcerns(concerns) {
+  if (!concerns || concerns.length === 0) return;
+
+  const card = document.getElementById('concerns-card');
+  card.classList.remove('hidden');
+  const list = document.getElementById('concerns-list');
+  list.innerHTML = '';
+
+  concerns.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'concern-card';
+    div.innerHTML = `
+      <div class="flex gap-1" style="align-items:flex-start">
+        ${c.thumbnail_path ? `<img src="/${c.thumbnail_path}" style="width:80px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="">` : ''}
+        <div>
+          <strong>${c.title}</strong>
+          ${c.room ? `<br><span class="text-muted" style="font-size:.85rem">${c.room}</span>` : ''}
+          ${c.description ? `<p class="text-muted" style="font-size:.85rem;margin-top:.25rem">${c.description}</p>` : ''}
+        </div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function loadWorkOrders() {
+  try {
+    const r = await fetch(`/api/owner/sessions/${reportSessionId}/work-orders`);
+    if (!r.ok) return;
+    const workOrders = await r.json();
+    if (!workOrders.length) return;
+
+    const card = document.getElementById('work-orders-card');
+    card.classList.remove('hidden');
+    const list = document.getElementById('work-orders-list');
+    list.innerHTML = '';
+
+    workOrders.forEach(wo => {
+      const div = document.createElement('div');
+      div.className = 'room-item';
+      const statusBadge = wo.status === 'dispatched'
+        ? '<span class="badge badge-success">Dispatched</span>'
+        : '<span class="badge badge-warning">Draft</span>';
+      const typeLabels = { nte: 'NTE', call_estimate: 'Call Est.', proceed: 'Proceed' };
+      div.innerHTML = `
+        <div>
+          <strong>Work Order</strong>
+          <br><span class="text-muted" style="font-size:.85rem">${typeLabels[wo.order_type] || wo.order_type} &middot; ${new Date(wo.created_at).toLocaleDateString()}</span>
+        </div>
+        ${statusBadge}
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) { /* silent */ }
 }
 
 async function publishReport() {

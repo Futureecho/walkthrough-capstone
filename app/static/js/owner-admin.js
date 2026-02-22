@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await loadUsers();
+  await loadTechnicians();
+
+  document.getElementById('add-tech-btn').addEventListener('click', addTechnician);
 
   // Invite link buttons
   document.getElementById('invite-admin-btn').addEventListener('click', () => generateLink('admin'));
@@ -123,6 +126,104 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// ── Technician Management ────────────────────────────────
+
+async function loadTechnicians() {
+  const div = document.getElementById('technician-list');
+  try {
+    const r = await fetch('/api/owner/technicians');
+    if (!r.ok) { div.innerHTML = '<p class="text-muted">Failed to load</p>'; return; }
+    const techs = await r.json();
+    renderTechnicians(techs);
+  } catch (e) {
+    div.innerHTML = '<p class="text-muted">Failed to load technicians</p>';
+  }
+}
+
+function renderTechnicians(techs) {
+  const div = document.getElementById('technician-list');
+  if (!techs.length) { div.innerHTML = '<p class="text-muted">No technicians yet</p>'; return; }
+
+  div.innerHTML = '';
+  techs.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'room-item';
+    el.style.alignItems = 'center';
+    el.innerHTML = `
+      <div style="flex:1">
+        <strong>${esc(t.name)}</strong>
+        <br><span class="text-muted" style="font-size:.85rem">${esc(t.email)}${t.phone ? ' · ' + esc(t.phone) : ''}</span>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost" data-action="edit-tech" data-id="${t.id}" style="padding:.3rem .6rem;font-size:.85rem">Edit</button>
+        <button class="btn" data-action="remove-tech" data-id="${t.id}" style="padding:.3rem .6rem;font-size:.85rem;background:var(--danger);color:#fff">Remove</button>
+      </div>
+    `;
+    div.appendChild(el);
+  });
+
+  // Edit handlers
+  div.querySelectorAll('[data-action="edit-tech"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const tech = techs.find(t => t.id === id);
+      if (!tech) return;
+      const name = prompt('Name:', tech.name);
+      if (name === null) return;
+      const email = prompt('Email:', tech.email);
+      if (email === null) return;
+      const phone = prompt('Phone:', tech.phone || '');
+      if (phone === null) return;
+
+      try {
+        const r = await fetch(`/api/owner/technicians/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim() }),
+        });
+        if (!r.ok) throw new Error('Failed');
+        await loadTechnicians();
+      } catch (e) { alert('Failed: ' + e.message); }
+    });
+  });
+
+  // Remove handlers
+  div.querySelectorAll('[data-action="remove-tech"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if (!confirm('Remove this technician?')) return;
+      try {
+        const r = await fetch(`/api/owner/technicians/${id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Failed');
+        await loadTechnicians();
+      } catch (e) { alert('Failed: ' + e.message); }
+    });
+  });
+}
+
+async function addTechnician() {
+  const name = document.getElementById('tech-name').value.trim();
+  const email = document.getElementById('tech-email').value.trim();
+  const phone = document.getElementById('tech-phone').value.trim();
+
+  if (!name || !email) { alert('Name and email are required'); return; }
+
+  try {
+    const r = await fetch('/api/owner/technicians', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone }),
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || 'Failed'); }
+    document.getElementById('tech-name').value = '';
+    document.getElementById('tech-email').value = '';
+    document.getElementById('tech-phone').value = '';
+    await loadTechnicians();
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  }
 }
 
 // ── Generate Invite Link ────────────────────────────────

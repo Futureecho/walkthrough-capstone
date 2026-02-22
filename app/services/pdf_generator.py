@@ -95,3 +95,63 @@ async def generate_pdf(db: AsyncSession, session_id: str) -> bytes:
         raise RuntimeError(f"PDF generation failed with {pisa_status.err} errors")
 
     return pdf_buffer.getvalue()
+
+
+async def generate_work_order_pdf(db: AsyncSession, work_order_id: str) -> bytes:
+    """Generate a work order PDF. Returns PDF bytes."""
+    from xhtml2pdf import pisa
+    from app.models import WorkOrder, Technician, Concern
+
+    wo = await crud.get_work_order(db, work_order_id)
+    if not wo:
+        raise ValueError("Work order not found")
+
+    tech = await crud.get_technician(db, wo.technician_id)
+    session = await crud.get_session(db, wo.session_id)
+    prop = await crud.get_property(db, session.property_id) if session else None
+
+    # Load included concerns with base64 thumbnails
+    concerns = []
+    for cid in (wo.included_concern_ids or []):
+        concern = await crud.get_concern(db, cid)
+        if concern:
+            thumb_b64 = ""
+            if concern.thumbnail_path:
+                try:
+                    from app.services.image_store import read_image_sync
+                    img_data = read_image_sync(concern.thumbnail_path)
+                    thumb_b64 = base64.standard_b64encode(img_data).decode("utf-8")
+                except Exception:
+                    pass
+            concerns.append({
+                "title": concern.title,
+                "description": concern.description,
+                "room": concern.room,
+                "thumb_b64": thumb_b64,
+            })
+
+    # Order type labels
+    type_labels = {
+        "nte": "Not to Exceed",
+        "call_estimate": "Call with Estimate",
+        "proceed": "Proceed with Work",
+    }
+
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)))
+    template = env.get_template("work_order.html.j2")
+    html = template.render(
+        work_order=wo,
+        technician=tech,
+        session=session,
+        property=prop,
+        concerns=concerns,
+        order_type_label=type_labels.get(wo.order_type, wo.order_type),
+        report_date=datetime.now(timezone.utc).strftime("%B %d, %Y"),
+    )
+
+    pdf_buffer = io.BytesIO()
+    pisa_status = pisa.CreatePDF(io.StringIO(html), dest=pdf_buffer)
+    if pisa_status.err:
+        raise RuntimeError(f"Work order PDF generation failed with {pisa_status.err} errors")
+
+    return pdf_buffer.getvalue()

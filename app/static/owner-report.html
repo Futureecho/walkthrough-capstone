@@ -29,6 +29,12 @@
     <div class="spinner"></div>
   </div>
 
+  <!-- Tenant Concerns -->
+  <div class="card hidden" id="concerns-card">
+    <h2>Tenant Concerns</h2>
+    <div id="concerns-list"></div>
+  </div>
+
   <!-- Room Details -->
   <div id="room-details"></div>
 
@@ -42,9 +48,16 @@
     </table>
   </div>
 
+  <!-- Work Orders -->
+  <div class="card hidden" id="work-orders-card">
+    <h2>Work Orders</h2>
+    <div id="work-orders-list"></div>
+  </div>
+
   <!-- Actions -->
   <div class="hidden" id="actions-card">
-    <button class="btn btn-success btn-block mb-1" id="publish-btn" disabled>Publish Report</button>
+    <button class="btn btn-success btn-block mb-1" id="publish-btn" disabled>Approve Report</button>
+    <button class="btn btn-primary btn-block mb-1" id="dispatch-btn">Dispatch Technician</button>
     <button class="btn btn-outline btn-block mb-1" id="reactivate-btn">Reactivate for Tenant</button>
     <button class="btn btn-danger btn-block mb-1" id="cancel-btn">Cancel Report</button>
     <a href="/owner" class="btn btn-outline btn-block">Back to Dashboard</a>

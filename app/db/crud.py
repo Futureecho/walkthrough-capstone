@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import (
     CompanySettings, Property, RoomTemplate, Session,
     Capture, CaptureImage, Annotation, Comparison, Candidate,
-    TenantLink, ReferenceImage,
+    TenantLink, ReferenceImage, Technician, Concern, WorkOrder,
 )
 
 
@@ -406,3 +406,94 @@ async def update_candidate(db: AsyncSession, candidate: Candidate, **kwargs) -> 
     await db.commit()
     await db.refresh(candidate)
     return candidate
+
+
+# ── Technician ───────────────────────────────────────────
+
+async def create_technician(db: AsyncSession, **kwargs) -> Technician:
+    tech = Technician(**kwargs)
+    db.add(tech)
+    await db.commit()
+    await db.refresh(tech)
+    return tech
+
+
+async def list_technicians(db: AsyncSession, active_only: bool = True) -> list[Technician]:
+    query = select(Technician)
+    if active_only:
+        query = query.where(Technician.is_active == True)
+    query = query.order_by(Technician.name)
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def get_technician(db: AsyncSession, tech_id: str) -> Technician | None:
+    return await db.get(Technician, tech_id)
+
+
+async def update_technician(db: AsyncSession, tech: Technician, **kwargs) -> Technician:
+    for k, v in kwargs.items():
+        if v is not None:
+            setattr(tech, k, v)
+    await db.commit()
+    await db.refresh(tech)
+    return tech
+
+
+# ── Concern ──────────────────────────────────────────────
+
+async def create_concern(db: AsyncSession, **kwargs) -> Concern:
+    concern = Concern(**kwargs)
+    db.add(concern)
+    await db.commit()
+    await db.refresh(concern)
+    return concern
+
+
+async def list_concerns_for_session(db: AsyncSession, session_id: str) -> list[Concern]:
+    result = await db.execute(
+        select(Concern)
+        .where(Concern.session_id == session_id)
+        .order_by(Concern.created_at)
+    )
+    return list(result.scalars().all())
+
+
+async def get_concern(db: AsyncSession, concern_id: str) -> Concern | None:
+    return await db.get(Concern, concern_id)
+
+
+async def delete_concern(db: AsyncSession, concern: Concern) -> None:
+    await db.delete(concern)
+    await db.commit()
+
+
+# ── WorkOrder ────────────────────────────────────────────
+
+async def create_work_order(db: AsyncSession, **kwargs) -> WorkOrder:
+    wo = WorkOrder(**kwargs)
+    db.add(wo)
+    await db.commit()
+    await db.refresh(wo)
+    return wo
+
+
+async def get_work_order(db: AsyncSession, work_order_id: str) -> WorkOrder | None:
+    return await db.get(WorkOrder, work_order_id)
+
+
+async def update_work_order(db: AsyncSession, wo: WorkOrder, **kwargs) -> WorkOrder:
+    for k, v in kwargs.items():
+        setattr(wo, k, v)
+    await db.commit()
+    await db.refresh(wo)
+    return wo
+
+
+async def list_work_orders_for_session(db: AsyncSession, session_id: str) -> list[WorkOrder]:
+    result = await db.execute(
+        select(WorkOrder)
+        .where(WorkOrder.session_id == session_id)
+        .order_by(WorkOrder.created_at)
+    )
+    return list(result.scalars().all())

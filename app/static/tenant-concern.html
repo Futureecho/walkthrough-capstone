@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Highlight Concern - Walkthru-X</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/verentyx-icon-32.png">
+<link rel="apple-touch-icon" href="/static/images/verentyx-icon-180.png">
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
+    <div>
+      <h1>Highlight Concern</h1>
+      <div class="subtitle" id="room-label">Take a photo of the issue</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Step 1: Camera -->
+  <div id="step-camera">
+    <div class="viewfinder" id="viewfinder">
+      <video id="camera" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <button class="btn btn-primary btn-block mb-1" id="capture-btn">Take Photo</button>
+  </div>
+
+  <!-- Step 2: Preview + Details -->
+  <div id="step-details" class="hidden">
+    <div class="card">
+      <img id="preview-img" style="width:100%;border-radius:var(--radius);margin-bottom:.75rem" alt="Concern photo">
+
+      <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem">Title (required)</label>
+      <div style="position:relative">
+        <input type="text" id="concern-title" maxlength="50" placeholder="e.g., Cracked tile in bathroom">
+        <span class="char-counter" id="title-counter">0/50</span>
+      </div>
+
+      <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem">Description (optional)</label>
+      <div style="position:relative">
+        <textarea id="concern-desc" maxlength="200" rows="3" placeholder="Add details about the concern..."></textarea>
+        <span class="char-counter" id="desc-counter">0/200</span>
+      </div>
+    </div>
+
+    <div class="flex gap-1">
+      <button class="btn btn-outline" style="flex:1" id="retake-btn">Retake</button>
+      <button class="btn btn-primary" style="flex:1" id="submit-btn">Submit Concern</button>
+    </div>
+  </div>
+
+  <!-- Done -->
+  <div id="step-done" class="hidden">
+    <div class="card">
+      <h2 style="color:var(--success)">Concern Submitted</h2>
+      <p class="text-muted">Your concern has been recorded and will be included in the inspection report.</p>
+      <button class="btn btn-primary btn-block mt-1" id="back-btn">Back to Inspection</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/tenant-concern.js"></script>
+</body>
+</html>

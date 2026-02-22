@@ -66,6 +66,7 @@ async def owner_queue(
             "review_flag": s.review_flag,
             "created_at": s.created_at.isoformat(),
             "room_count": len(s.captures) if s.captures else 0,
+            "concern_count": len(s.concerns) if s.concerns else 0,
         }
         if s.report_status == "active":
             pending_inspections.append(item)
@@ -306,6 +307,27 @@ async def cancel_session(
     return {"ok": True, "session_id": session.id, "report_status": "cancelled"}
 
 
+# ── Session work orders ─────────────────────────────────
+
+@router.get("/sessions/{session_id}/work-orders")
+async def list_session_work_orders(
+    session_id: str,
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_company_db),
+):
+    work_orders = await crud.list_work_orders_for_session(db, session_id)
+    return [
+        {
+            "id": wo.id,
+            "order_type": wo.order_type,
+            "status": wo.status,
+            "created_at": wo.created_at.isoformat(),
+            "dispatched_at": wo.dispatched_at.isoformat() if wo.dispatched_at else None,
+        }
+        for wo in work_orders
+    ]
+
+
 # ── Owner candidate review ──────────────────────────────
 
 @router.put("/candidates/{candidate_id}")
@@ -351,6 +373,8 @@ async def get_settings(
         "gemini_api_key_set": bool(settings.gemini_api_key),
         "grok_api_key_set": bool(settings.grok_api_key),
         "default_link_days": settings.default_link_days,
+        "approval_email": settings.approval_email or "",
+        "approval_email_set": bool(settings.approval_email),
     }
 
 
@@ -378,6 +402,12 @@ async def update_settings(
             except RuntimeError:
                 updates[key_field] = val
 
+    if body.approval_email is not None:
+        try:
+            updates["approval_email"] = encrypt_value(body.approval_email) if body.approval_email else ""
+        except RuntimeError:
+            updates["approval_email"] = body.approval_email
+
     if updates:
         settings = await crud.update_company_settings(db, settings, **updates)
 
@@ -389,6 +419,8 @@ async def update_settings(
         "gemini_api_key_set": bool(settings.gemini_api_key),
         "grok_api_key_set": bool(settings.grok_api_key),
         "default_link_days": settings.default_link_days,
+        "approval_email": settings.approval_email or "",
+        "approval_email_set": bool(settings.approval_email),
     }
 
 

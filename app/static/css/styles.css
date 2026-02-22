@@ -519,6 +519,80 @@ textarea {
 }
 .btn-back:hover { background: rgba(255,255,255,.15); }
 
+/* Concern card */
+.concern-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem;
+  margin: .5rem 0;
+  background: var(--card-bg);
+}
+
+/* Character counter */
+.char-counter {
+  position: absolute;
+  right: .75rem;
+  bottom: 1.25rem;
+  font-size: .75rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Step indicator */
+.step-indicator {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+.step-dot {
+  padding: .4rem .8rem;
+  border-radius: 20px;
+  font-size: .85rem;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+.step-dot.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(0, 212, 255, .1);
+}
+
+/* Work order preview */
+.wo-preview {
+  border: 2px solid var(--primary);
+  background: var(--card-bg);
+}
+.wo-preview h2 {
+  font-size: 1.2rem;
+}
+
+/* Radio group */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.radio-option:has(input:checked) {
+  border-color: var(--primary);
+  background: rgba(0, 212, 255, .05);
+}
+.radio-option input[type="radio"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
 /* Mobile: stack dashboard nav below logo */
 @media (max-width: 600px) {
   .header .flex-between { flex-wrap: wrap; }

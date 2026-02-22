@@ -18,3 +18,4 @@ class CompanySettings(Base, ULIDMixin):
     gemini_api_key: Mapped[str] = mapped_column(EncryptedString(500), default="")
     grok_api_key: Mapped[str] = mapped_column(EncryptedString(500), default="")
     default_link_days: Mapped[int] = mapped_column(Integer, default=7)
+    approval_email: Mapped[str] = mapped_column(EncryptedString(500), default="")

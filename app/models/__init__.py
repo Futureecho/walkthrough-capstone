@@ -17,6 +17,9 @@ from app.models.comparison import Comparison
 from app.models.candidate import Candidate
 from app.models.tenant_link import TenantLink
 from app.models.reference_image import ReferenceImage
+from app.models.technician import Technician
+from app.models.concern import Concern
+from app.models.work_order import WorkOrder
 
 # Auth models (central auth DB)
 from app.models.auth_models import AuthBase, Company, User, UserSession, PasswordReset, Invite, Referral
@@ -26,6 +29,7 @@ __all__ = [
     "Base", "CompanySettings", "Property", "RoomTemplate",
     "Session", "Capture", "CaptureImage", "Annotation", "Comparison",
     "Candidate", "TenantLink", "ReferenceImage",
+    "Technician", "Concern", "WorkOrder",
     # Auth
     "AuthBase", "Company", "User", "UserSession", "PasswordReset", "Invite", "Referral",
 ]

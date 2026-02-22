@@ -587,7 +587,7 @@ async function show360Setup() {
   });
 
   document.getElementById('try-360-btn').addEventListener('click', () => {
-    window.location.href = `/capture/360?room=${encodeURIComponent(roomName)}&property=${propertyId}`;
+    window.location.href = `/capture/360?room=${encodeURIComponent(roomName)}&property=${propertyId}&room_template_id=${roomId}`;
   });
 }
 

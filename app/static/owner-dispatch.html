@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dispatch Technician - Walkthru-X</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/verentyx-icon-32.png">
+<link rel="apple-touch-icon" href="/static/images/verentyx-icon-180.png">
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="flex-between">
+    <div class="header-inner">
+      <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
+      <div>
+        <h1>Dispatch Technician</h1>
+        <div class="subtitle" id="dispatch-subtitle">Loading...</div>
+      </div>
+    </div>
+    <a id="back-link" href="/owner" class="btn btn-back">&lsaquo;</a>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Step indicators -->
+  <div class="step-indicator mb-1" id="step-dots">
+    <span class="step-dot active" data-step="1">1. Configure</span>
+    <span class="step-dot" data-step="2">2. Preview</span>
+  </div>
+
+  <!-- Step 1: Configure -->
+  <div id="step-configure">
+    <div class="card">
+      <h2>Technician</h2>
+      <select id="tech-select">
+        <option value="">Select technician...</option>
+      </select>
+      <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.85rem" id="add-tech-btn">+ Add New Technician</button>
+
+      <!-- Inline add tech form -->
+      <div id="add-tech-form" class="hidden" style="margin-top:.75rem;padding:.75rem;border:1px solid var(--border);border-radius:var(--radius)">
+        <input type="text" id="new-tech-name" placeholder="Name" style="margin-bottom:.5rem">
+        <input type="email" id="new-tech-email" placeholder="Email" style="margin-bottom:.5rem">
+        <input type="text" id="new-tech-phone" placeholder="Phone (optional)" style="margin-bottom:.5rem">
+        <div class="flex gap-1">
+          <button class="btn btn-primary" style="flex:1;padding:.4rem" id="save-tech-btn">Save</button>
+          <button class="btn btn-outline" style="flex:1;padding:.4rem" id="cancel-tech-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Entry Contact</h2>
+      <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem">Contact Name</label>
+      <input type="text" id="contact-name" placeholder="Person who can let technician in">
+      <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem">Contact Phone</label>
+      <input type="text" id="contact-phone" placeholder="Phone number">
+    </div>
+
+    <div class="card">
+      <h2>Work Order Type</h2>
+      <div class="radio-group">
+        <label class="radio-option">
+          <input type="radio" name="order-type" value="nte" checked>
+          <span>Not to Exceed (NTE)</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="order-type" value="call_estimate">
+          <span>Call with Estimate</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="order-type" value="proceed">
+          <span>Proceed with Work</span>
+        </label>
+      </div>
+      <div id="nte-field" style="margin-top:.75rem">
+        <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem">NTE Amount ($)</label>
+        <input type="number" id="nte-amount" min="0" step="0.01" placeholder="500.00">
+      </div>
+    </div>
+
+    <div class="card" id="concerns-checklist-card">
+      <h2>Include Concerns</h2>
+      <div id="concerns-list">
+        <p class="text-muted">Loading concerns...</p>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block mb-1" id="generate-btn">Generate Work Order</button>
+    <a id="cancel-link" href="/owner" class="btn btn-outline btn-block">Cancel</a>
+  </div>
+
+  <!-- Step 2: Preview -->
+  <div id="step-preview" class="hidden">
+    <div class="card wo-preview" id="wo-preview-content">
+      <!-- Rendered work order preview -->
+    </div>
+
+    <div class="flex gap-1 mb-1">
+      <button class="btn btn-success" style="flex:1" id="dispatch-btn">Dispatch</button>
+      <button class="btn btn-outline" style="flex:1" id="edit-btn">Edit</button>
+    </div>
+    <a id="cancel-preview-link" href="/owner" class="btn btn-outline btn-block">Cancel</a>
+  </div>
+
+  <!-- Done -->
+  <div id="step-done" class="hidden">
+    <div class="card">
+      <h2 style="color:var(--success)">Work Order Dispatched</h2>
+      <p class="text-muted">The work order has been emailed to the technician with a PDF attachment.</p>
+      <a id="done-link" href="/owner" class="btn btn-primary btn-block mt-1">Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/owner-dispatch.js"></script>
+</body>
+</html>

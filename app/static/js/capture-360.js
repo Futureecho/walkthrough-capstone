@@ -48,11 +48,15 @@ function tokenParam(sep = '?') {
 }
 
 // ── Init ──────────────────────────────────────────────────
+let roomTemplateId = null;
+let sectorBlobs = {}; // Store captured blobs for owner upload
+
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   sessionId = params.get('session');
   roomName = params.get('room');
   tenantToken = params.get('token');
+  roomTemplateId = params.get('room_template_id');
 
   // Preview mode when no session (owner testing the capture experience)
   previewMode = !sessionId;
@@ -379,9 +383,14 @@ async function doCapture(sectorIndex) {
   flashViewfinder();
   setGuidance(`Sector ${sectorIndex + 1} captured!`, 'success');
 
+  // Store blob for owner reference upload
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  if (previewMode && roomTemplateId) {
+    sectorBlobs[sectorIndex] = blob;
+  }
+
   // Upload (skip in preview mode)
   if (!previewMode) {
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
     const hint = `sector_${sectorIndex}`;
 
     const form = new FormData();
@@ -438,10 +447,14 @@ async function forceCapture(sectorIndex) {
   flashViewfinder();
   setGuidance(`Sector ${sectorIndex + 1} captured!`, 'success');
 
+  const blob2 = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  if (previewMode && roomTemplateId) {
+    sectorBlobs[sectorIndex] = blob2;
+  }
+
   if (!previewMode) {
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
     const form = new FormData();
-    form.append('file', blob, `sector_${sectorIndex}.jpg`);
+    form.append('file', blob2, `sector_${sectorIndex}.jpg`);
     form.append('orientation_hint', `sector_${sectorIndex}`);
     if (tenantToken) form.append('token', tenantToken);
 
@@ -549,6 +562,37 @@ async function finishCapture() {
     try {
       await fetch(`/api/captures/${captureId}/submit${tokenParam()}`, { method: 'POST' });
     } catch (e) { /* non-critical */ }
+  }
+
+  // Owner mode: upload captured sectors as reference images
+  if (previewMode && roomTemplateId && Object.keys(sectorBlobs).length > 0) {
+    setGuidance('Saving reference images...', 'info');
+    try {
+      // Delete existing 360 references first
+      const existingR = await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`);
+      if (existingR.ok) {
+        const existing = await existingR.json();
+        for (const img of existing) {
+          if (img.id) {
+            await fetch(`/api/owner/reference-images/${img.id}`, { method: 'DELETE' }).catch(() => {});
+          }
+        }
+      }
+
+      // Upload each captured sector as a reference image
+      for (const [idx, blob] of Object.entries(sectorBlobs)) {
+        const form = new FormData();
+        form.append('file', blob, `sector_${idx}.jpg`);
+        form.append('position_hint', `sector_${idx}`);
+
+        await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`, {
+          method: 'POST',
+          body: form,
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to save reference images:', e);
+    }
   }
 
   if (tenantToken) {

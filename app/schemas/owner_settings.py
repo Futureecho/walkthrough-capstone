@@ -23,6 +23,7 @@ class CompanySettingsUpdate(BaseModel):
     gemini_api_key: str | None = None
     grok_api_key: str | None = None
     default_link_days: int | None = None
+    approval_email: str | None = None
 
     @field_validator("llm_provider")
     @classmethod

@@ -114,7 +114,30 @@ function renderSession() {
     // Show submit card if there are rooms (active session)
     document.getElementById('submit-card').classList.remove('hidden');
     document.getElementById('submit-report-btn').addEventListener('click', attemptSubmit);
+
+    // Show concern button during active session
+    const concernBtn = document.getElementById('concern-btn');
+    concernBtn.style.display = '';
+    concernBtn.addEventListener('click', () => {
+      window.location.href = `/concern?token=${encodeURIComponent(tenantToken)}&session=${sessionData.session_id}&room=`;
+    });
+
+    // Load concern count
+    loadConcernCount();
   }
+}
+
+async function loadConcernCount() {
+  try {
+    const r = await fetch(`/api/tenant/concerns?session_id=${sessionData.session_id}&token=${encodeURIComponent(tenantToken)}`);
+    if (!r.ok) return;
+    const concerns = await r.json();
+    if (concerns.length > 0) {
+      const badge = document.getElementById('concern-count');
+      badge.textContent = concerns.length;
+      badge.style.display = '';
+    }
+  } catch (e) { /* silent */ }
 }
 
 // ── Submit flow ──────────────────────────────────────────

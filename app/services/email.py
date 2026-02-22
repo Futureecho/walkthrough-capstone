@@ -46,6 +46,42 @@ def send_invite_email(email: str, token: str, company_name: str, invited_by: str
     return _send(email, f"Join {company_name} on Walkthru-X", html)
 
 
+def send_work_order_email(
+    to: str, cc: str, subject: str, html: str,
+    pdf_bytes: bytes, filename: str,
+) -> bool:
+    """Send a work order email with PDF attachment."""
+    if not _settings.resend_api_key:
+        logger.warning("RESEND_API_KEY not set — work order email to %s not sent", to)
+        return False
+
+    import base64
+    import resend
+    resend.api_key = _settings.resend_api_key
+
+    try:
+        payload = {
+            "from": "Walkthru-X <noreply@verentyx.com>",
+            "to": [to],
+            "subject": subject,
+            "html": html,
+            "attachments": [
+                {
+                    "filename": filename,
+                    "content": base64.b64encode(pdf_bytes).decode(),
+                }
+            ],
+        }
+        if cc:
+            payload["cc"] = [cc]
+
+        resend.Emails.send(payload)
+        return True
+    except Exception:
+        logger.exception("Failed to send work order email to %s", to)
+        return False
+
+
 def send_password_reset_email(email: str, token: str) -> bool:
     """Send a password reset email."""
     url = f"{_settings.app_url}/reset-password/{token}"

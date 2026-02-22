@@ -15,6 +15,9 @@ from app.api.invite import router as invite_router
 from app.api.dashboard import router as dashboard_router
 from app.api.room_templates import router as room_templates_router
 from app.api.tenant import router as tenant_router
+from app.api.technicians import router as technicians_router
+from app.api.concerns import router as concerns_router
+from app.api.work_orders import router as work_orders_router
 
 api_router = APIRouter()
 api_router.include_router(properties_router)
@@ -30,3 +33,6 @@ api_router.include_router(invite_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(room_templates_router)
 api_router.include_router(tenant_router)
+api_router.include_router(technicians_router)
+api_router.include_router(concerns_router)
+api_router.include_router(work_orders_router)

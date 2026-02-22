@@ -39,6 +39,9 @@ async function loadSettings() {
     document.getElementById('anthropic-status').textContent = data.anthropic_api_key_set ? 'Key saved' : '';
     document.getElementById('gemini-status').textContent = data.gemini_api_key_set ? 'Key saved' : '';
     document.getElementById('grok-status').textContent = data.grok_api_key_set ? 'Key saved' : '';
+
+    document.getElementById('approval-email').value = data.approval_email || '';
+    document.getElementById('approval-email-status').textContent = data.approval_email_set ? 'Email saved' : 'Not set';
   } catch (e) {
     document.getElementById('save-msg').textContent = 'Failed to load settings';
   }
@@ -59,6 +62,10 @@ async function saveSettings() {
   if (anthropicKey) body.anthropic_api_key = anthropicKey;
   if (geminiKey) body.gemini_api_key = geminiKey;
   if (grokKey) body.grok_api_key = grokKey;
+
+  const approvalEmail = document.getElementById('approval-email').value.trim();
+  // Always send approval_email (empty string clears it)
+  body.approval_email = approvalEmail;
 
   try {
     const r = await fetch('/api/owner/settings', {

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    color: #1e293b;
+    margin: 0;
+    padding: 20px;
+  }
+  .header {
+    text-align: center;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    color: #2563eb;
+    font-size: 22px;
+    margin: 0 0 5px 0;
+  }
+  .header p {
+    color: #64748b;
+    margin: 3px 0;
+    font-size: 11px;
+  }
+  .info-table {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  .info-table td {
+    padding: 4px 8px;
+    vertical-align: top;
+    font-size: 11px;
+  }
+  .info-table .label {
+    color: #64748b;
+    width: 140px;
+    font-weight: bold;
+  }
+  .section-header {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    margin: 15px 0 8px 0;
+    font-size: 14px;
+    font-weight: bold;
+    border-left: 3px solid #2563eb;
+  }
+  .concern-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 8px 0;
+    page-break-inside: avoid;
+  }
+  .concern-row table {
+    width: 100%;
+  }
+  .concern-row td {
+    vertical-align: top;
+    padding: 4px;
+  }
+  .concern-row .thumb {
+    width: 120px;
+  }
+  .concern-row .thumb img {
+    max-width: 110px;
+    max-height: 80px;
+    border-radius: 4px;
+  }
+  .concern-row .details {
+    font-size: 11px;
+  }
+  .concern-row .title {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+  .concern-row .room-label {
+    color: #64748b;
+    font-size: 10px;
+    margin-bottom: 3px;
+  }
+  .terms {
+    margin: 20px 0;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 10px;
+    color: #475569;
+  }
+  .terms h3 {
+    font-size: 12px;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+  }
+  .nte-amount {
+    font-size: 16px;
+    font-weight: bold;
+    color: #dc2626;
+    margin: 5px 0;
+  }
+  .signature-line {
+    margin-top: 40px;
+    padding-top: 10px;
+  }
+  .sig-field {
+    display: inline-block;
+    width: 45%;
+    margin-right: 5%;
+    border-top: 1px solid #1e293b;
+    padding-top: 5px;
+    font-size: 10px;
+    color: #64748b;
+  }
+  .footer {
+    margin-top: 30px;
+    font-size: 9px;
+    color: #94a3b8;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>WORK ORDER</h1>
+  <p>{{ property.label if property else "Property" }}</p>
+  <p>Generated {{ report_date }}</p>
+</div>
+
+<table class="info-table">
+  <tr>
+    <td class="label">Property:</td>
+    <td>{{ property.label if property else "" }}{% if property and property.address %} — {{ property.address }}{% endif %}</td>
+  </tr>
+  <tr>
+    <td class="label">Tenant:</td>
+    <td>{{ session.tenant_name if session else "" }}{% if session and session.tenant_name_2 %} &amp; {{ session.tenant_name_2 }}{% endif %}</td>
+  </tr>
+  <tr>
+    <td class="label">Technician:</td>
+    <td>{{ technician.name if technician else "" }}{% if technician %} ({{ technician.email }}){% endif %}</td>
+  </tr>
+  <tr>
+    <td class="label">Entry Contact:</td>
+    <td>{{ work_order.contact_name }}{% if work_order.contact_phone %} — {{ work_order.contact_phone }}{% endif %}</td>
+  </tr>
+  <tr>
+    <td class="label">Work Order Type:</td>
+    <td>{{ order_type_label }}</td>
+  </tr>
+  {% if work_order.order_type == 'nte' and work_order.nte_amount %}
+  <tr>
+    <td class="label">Not to Exceed:</td>
+    <td class="nte-amount">${{ "%.2f" | format(work_order.nte_amount) }}</td>
+  </tr>
+  {% endif %}
+</table>
+
+{% if concerns %}
+<div class="section-header">Concerns</div>
+
+{% for c in concerns %}
+<div class="concern-row">
+  <table>
+    <tr>
+      {% if c.thumb_b64 %}
+      <td class="thumb">
+        <img src="data:image/jpeg;base64,{{ c.thumb_b64 }}" alt="Concern photo">
+      </td>
+      {% endif %}
+      <td class="details">
+        <div class="title">{{ c.title }}</div>
+        {% if c.room %}<div class="room-label">Room: {{ c.room }}</div>{% endif %}
+        {% if c.description %}<p>{{ c.description }}</p>{% endif %}
+      </td>
+    </tr>
+  </table>
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="terms">
+  <h3>Terms &amp; Conditions</h3>
+  {% if work_order.order_type == 'nte' %}
+  <p>This work order authorizes repairs not to exceed <strong>${{ "%.2f" | format(work_order.nte_amount or 0) }}</strong>.
+  Any additional costs beyond this amount require prior written approval from the property owner/manager.
+  Work should be completed in a timely manner and all areas left clean upon completion.</p>
+  {% elif work_order.order_type == 'call_estimate' %}
+  <p>Please inspect the listed concerns and provide a written estimate before proceeding with any repairs.
+  Contact the property owner/manager with the estimate for approval before beginning work.</p>
+  {% else %}
+  <p>This work order authorizes the technician to proceed with necessary repairs for the listed concerns.
+  All work should be completed in a professional manner with the area left clean upon completion.
+  Invoice should be submitted upon completion of work.</p>
+  {% endif %}
+</div>
+
+<div class="signature-line">
+  <div class="sig-field">Technician Signature: ________________</div>
+  <div class="sig-field">Date: ________________</div>
+</div>
+
+<div class="footer">
+  <p>Generated by Walkthru-X &mdash; verentyx.com</p>
+</div>
+
+</body>
+</html>

@@ -216,6 +216,20 @@ async def reset_password_page(token: str):
     return FileResponse(str(_static_dir / "reset-password.html"))
 
 
+# ── Tenant concern page ──────────────────────────────────
+
+@app.get("/concern")
+async def concern_page():
+    return FileResponse(str(_static_dir / "tenant-concern.html"))
+
+
+# ── Owner dispatch page ──────────────────────────────────
+
+@app.get("/owner/dispatch")
+async def dispatch_page():
+    return FileResponse(str(_static_dir / "owner-dispatch.html"))
+
+
 # ── Tenant inspection page ───────────────────────────────
 
 @app.get("/inspect/{token:path}")
