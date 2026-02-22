@@ -47,9 +47,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('discard-btn-top').addEventListener('click', discard);
   document.getElementById('position-name').addEventListener('input', onNameInput);
 
-  // Set page title
-  document.getElementById('page-title').textContent = editIndex !== null ? 'Edit Position' : 'Add Position';
-
   // Prep alignment canvas (offscreen)
   alignCanvas = document.createElement('canvas');
   alignCanvas.width = ALIGN_W;
@@ -262,7 +259,8 @@ function removeGhostOverlay() {
 
 function prepareRefData(url) {
   const img = new Image();
-  img.crossOrigin = 'anonymous';
+  // Only set crossOrigin for non-blob URLs (server images need it, blob URLs break with it)
+  if (!url.startsWith('blob:')) img.crossOrigin = 'anonymous';
   img.onload = () => {
     alignCtx.drawImage(img, 0, 0, ALIGN_W, ALIGN_H);
     const data = alignCtx.getImageData(0, 0, ALIGN_W, ALIGN_H);

@@ -14,16 +14,17 @@
   <div class="flex-between">
     <div class="header-inner">
       <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
-      <div>
-        <h1 id="page-title">Add Position</h1>
-        <div class="subtitle" id="room-subtitle">Loading...</div>
-      </div>
     </div>
     <button class="btn btn-back" id="discard-btn-top">&lsaquo;</button>
   </div>
 </div>
 
 <div class="container">
+  <!-- Room label -->
+  <div style="margin-bottom:.75rem">
+    <span class="text-muted" style="font-size:.9rem" id="room-subtitle">Loading...</span>
+  </div>
+
   <!-- Position name -->
   <div class="card">
     <label style="font-size:.85rem;color:var(--text-muted);margin-bottom:.25rem;display:block">Position Name</label>
@@ -55,6 +56,6 @@
   </div>
 </div>
 
-<script src="/static/js/owner-position.js?v=2"></script>
+<script src="/static/js/owner-position.js?v=3"></script>
 </body>
 </html>
