@@ -62,6 +62,30 @@
   <button class="btn btn-primary btn-block" id="save-btn">Save Settings</button>
   <div id="save-msg" class="text-muted mt-1" style="text-align:center"></div>
 
+  <!-- Change Password -->
+  <div class="card mt-2">
+    <h2>Change Password</h2>
+    <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem">Current Password</label>
+    <input type="password" id="current-password" placeholder="Current password" autocomplete="current-password">
+
+    <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem;margin-top:.5rem">New Password</label>
+    <div style="position:relative">
+      <input type="password" id="new-password" placeholder="At least 8 characters" autocomplete="new-password" style="padding-right:2.5rem">
+      <button type="button" class="pw-toggle" data-target="new-password" tabindex="-1"
+              style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:0">&#128065;</button>
+    </div>
+
+    <label class="text-muted" style="font-size:.85rem;display:block;margin-bottom:.25rem;margin-top:.5rem">Confirm New Password</label>
+    <div style="position:relative">
+      <input type="password" id="confirm-password" placeholder="Confirm new password" autocomplete="new-password" style="padding-right:2.5rem">
+      <button type="button" class="pw-toggle" data-target="confirm-password" tabindex="-1"
+              style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:0">&#128065;</button>
+    </div>
+
+    <div id="pw-change-msg" style="font-size:.9rem;margin-top:.5rem;text-align:center"></div>
+    <button class="btn btn-primary btn-block" id="change-pw-btn" style="margin-top:.5rem">Change Password</button>
+  </div>
+
   <!-- MFA Section -->
   <div class="card mt-2">
     <h2>Two-Factor Authentication</h2>

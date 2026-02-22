@@ -58,6 +58,11 @@ class MFADisableRequest(BaseModel):
     code: str
 
 
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class PasswordForgotRequest(BaseModel):
     email: str
 
@@ -285,6 +290,31 @@ async def mfa_disable(
     await db.commit()
 
     return {"ok": True, "mfa_enabled": False}
+
+
+# ── Password Change ───────────────────────────────────────
+
+@router.post("/password/change")
+async def password_change(
+    body: PasswordChangeRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: AsyncSession = Depends(get_auth_db),
+):
+    """Change password for the currently logged-in user."""
+    if len(body.new_password) < 8:
+        return JSONResponse(status_code=400, content={"detail": "New password must be at least 8 characters"})
+
+    user = await db.get(User, auth.user_id)
+    if not user:
+        return JSONResponse(status_code=400, content={"detail": "User not found"})
+
+    if not verify_password(body.current_password, user.password_hash):
+        return JSONResponse(status_code=401, content={"detail": "Current password is incorrect"})
+
+    user.password_hash = hash_password(body.new_password)
+    await db.commit()
+
+    return {"ok": True, "message": "Password updated"}
 
 
 # ── Password Reset ────────────────────────────────────────

@@ -11,8 +11,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadMFAStatus();
 
   document.getElementById('save-btn').addEventListener('click', saveSettings);
+  document.getElementById('change-pw-btn').addEventListener('click', changePassword);
   document.getElementById('mfa-verify-btn').addEventListener('click', enableMFA);
   document.getElementById('mfa-disable-btn').addEventListener('click', disableMFA);
+
+  // Eye toggle buttons
+  document.querySelectorAll('.pw-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      btn.style.opacity = isPassword ? '1' : '0.5';
+    });
+  });
 });
 
 async function loadSettings() {
@@ -69,6 +80,43 @@ async function saveSettings() {
     document.getElementById('save-msg').textContent = 'Failed to save';
     document.getElementById('save-msg').style.color = 'var(--danger)';
   }
+}
+
+// ── Change Password ─────────────────────────────────────
+
+async function changePassword() {
+  const msgEl = document.getElementById('pw-change-msg');
+  msgEl.textContent = '';
+
+  const current = document.getElementById('current-password').value;
+  const newPw = document.getElementById('new-password').value;
+  const confirm = document.getElementById('confirm-password').value;
+
+  if (!current) { showPwMsg(msgEl, 'Enter your current password', true); return; }
+  if (newPw.length < 8) { showPwMsg(msgEl, 'New password must be at least 8 characters', true); return; }
+  if (newPw !== confirm) { showPwMsg(msgEl, 'Passwords do not match', true); return; }
+
+  try {
+    const r = await fetch('/api/auth/password/change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: current, new_password: newPw }),
+    });
+    const data = await r.json();
+    if (!r.ok) { showPwMsg(msgEl, data.detail || 'Failed', true); return; }
+
+    showPwMsg(msgEl, 'Password updated!', false);
+    document.getElementById('current-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+  } catch (e) {
+    showPwMsg(msgEl, 'Connection error', true);
+  }
+}
+
+function showPwMsg(el, msg, isError) {
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--success)';
 }
 
 // ── MFA ──────────────────────────────────────────────────
