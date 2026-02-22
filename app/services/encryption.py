@@ -24,3 +24,15 @@ def decrypt_value(encrypted: str) -> str:
     if not encrypted:
         return ""
     return _get_fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
+
+
+def encrypt_bytes(data: bytes) -> bytes:
+    if not data:
+        return b""
+    return _get_fernet().encrypt(data)
+
+
+def decrypt_bytes(data: bytes) -> bytes:
+    if not data:
+        return b""
+    return _get_fernet().decrypt(data)

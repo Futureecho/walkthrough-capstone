@@ -196,6 +196,101 @@ async def cmd_migrate(args):
     print(f"\nYou can now log in with: {admin.email}")
 
 
+async def cmd_encrypt_existing(args):
+    """Encrypt existing plaintext DB fields and image files."""
+    import os
+    from pathlib import Path
+    from sqlalchemy import select, text
+    from app.services.encryption import encrypt_value, encrypt_bytes
+
+    fernet_key = os.environ.get("FERNET_KEY", "")
+    if not fernet_key:
+        print("ERROR: FERNET_KEY environment variable must be set.")
+        print('Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"')
+        sys.exit(1)
+
+    from app.db.engine import tenant_pool
+    from app.models.base import Base
+
+    companies_dir = Path("data/companies")
+    if not companies_dir.exists():
+        print("No companies directory found.")
+        return
+
+    for company_dir in companies_dir.iterdir():
+        if not company_dir.is_dir() or not (company_dir / "tenant.db").exists():
+            continue
+
+        company_id = company_dir.name
+        print(f"\n--- Encrypting company: {company_id} ---")
+
+        # Encrypt DB fields
+        factory = tenant_pool.session_factory(company_id)
+        async with factory() as db:
+            # Properties — encrypt address
+            rows = (await db.execute(text("SELECT id, address FROM properties"))).fetchall()
+            for row in rows:
+                val = row[1]
+                if val and not val.startswith("gAAAAA"):  # Not already encrypted
+                    encrypted = encrypt_value(val)
+                    await db.execute(
+                        text("UPDATE properties SET address = :addr WHERE id = :id"),
+                        {"addr": encrypted, "id": row[0]},
+                    )
+                    print(f"  Encrypted property address: {row[0]}")
+
+            # Sessions — encrypt tenant names
+            rows = (await db.execute(text("SELECT id, tenant_name, tenant_name_2 FROM sessions"))).fetchall()
+            for row in rows:
+                updates = {}
+                if row[1] and not row[1].startswith("gAAAAA"):
+                    updates["tenant_name"] = encrypt_value(row[1])
+                if row[2] and not row[2].startswith("gAAAAA"):
+                    updates["tenant_name_2"] = encrypt_value(row[2])
+                if updates:
+                    sets = ", ".join(f"{k} = :{k}" for k in updates)
+                    updates["id"] = row[0]
+                    await db.execute(text(f"UPDATE sessions SET {sets} WHERE id = :id"), updates)
+                    print(f"  Encrypted session tenant names: {row[0]}")
+
+            # CompanySettings — encrypt API keys
+            rows = (await db.execute(text(
+                "SELECT id, openai_api_key, anthropic_api_key, gemini_api_key, grok_api_key FROM company_settings"
+            ))).fetchall()
+            for row in rows:
+                updates = {}
+                for i, col in enumerate(["openai_api_key", "anthropic_api_key", "gemini_api_key", "grok_api_key"], 1):
+                    val = row[i]
+                    if val and not val.startswith("gAAAAA"):
+                        updates[col] = encrypt_value(val)
+                if updates:
+                    sets = ", ".join(f"{k} = :{k}" for k in updates)
+                    updates["id"] = row[0]
+                    await db.execute(text(f"UPDATE company_settings SET {sets} WHERE id = :id"), updates)
+                    print(f"  Encrypted API keys: {row[0]}")
+
+            await db.commit()
+
+        # Encrypt image files
+        images_dir = company_dir / "images"
+        if not images_dir.exists():
+            continue
+
+        for img_file in images_dir.rglob("*"):
+            if img_file.is_file() and img_file.suffix != ".enc" and not (img_file.parent / f"{img_file.name}.enc").exists():
+                try:
+                    raw = img_file.read_bytes()
+                    enc = encrypt_bytes(raw)
+                    enc_path = img_file.parent / f"{img_file.name}.enc"
+                    enc_path.write_bytes(enc)
+                    img_file.unlink()  # Remove plaintext original
+                    print(f"  Encrypted image: {img_file.relative_to(companies_dir)}")
+                except Exception as e:
+                    print(f"  WARNING: Failed to encrypt {img_file}: {e}")
+
+    print("\nEncryption migration complete.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Walkthru-X CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -212,6 +307,9 @@ def main():
     mg.add_argument("--company-name", default="My Company", help="Name for the migrated company")
     mg.add_argument("--admin-email", default="", help="Admin email (defaults to username@localhost)")
 
+    # encrypt-existing
+    subparsers.add_parser("encrypt-existing", help="Encrypt existing plaintext data (requires FERNET_KEY)")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -221,6 +319,8 @@ def main():
         asyncio.run(cmd_create_company(args))
     elif args.command == "migrate":
         asyncio.run(cmd_migrate(args))
+    elif args.command == "encrypt-existing":
+        asyncio.run(cmd_encrypt_existing(args))
 
 
 if __name__ == "__main__":

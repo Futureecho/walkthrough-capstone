@@ -6,9 +6,9 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.db.engine import engine, tenant_pool
 from app.db.auth_engine import auth_engine
@@ -89,19 +89,47 @@ _static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 
-# Dynamic image serving — route to correct company's images
+# Authenticated image serving — decrypts encrypted images on the fly
 @app.get("/data/companies/{company_id}/images/{path:path}")
-async def serve_company_image(company_id: str, path: str):
-    """Serve images from the correct company directory."""
-    file_path = Path(f"data/companies/{company_id}/images/{path}")
-    if not file_path.exists():
+async def serve_company_image(
+    company_id: str,
+    path: str,
+    request: Request,
+):
+    """Serve images from the correct company directory (auth required)."""
+    from app.dependencies import require_auth_or_tenant
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from app.db.auth_engine import get_auth_db
+
+    # Authenticate: session cookie or tenant token
+    async for db in get_auth_db():
+        try:
+            auth = await require_auth_or_tenant(request, request.query_params.get("token", ""), db)
+        except HTTPException:
+            raise HTTPException(401, "Authentication required")
+
+    # Verify user belongs to this company
+    if auth.company_id != company_id:
+        raise HTTPException(403, "Access denied")
+
+    # Read (and decrypt if needed) the image
+    from app.services.image_store import read_image
+    file_path = str(Path(f"data/companies/{company_id}/images/{path}"))
+    try:
+        image_data = await read_image(file_path)
+    except FileNotFoundError:
         raise HTTPException(404, "Image not found")
-    return FileResponse(str(file_path))
 
+    # Determine content type from extension
+    ext = Path(path).suffix.lower().replace(".enc", "")
+    if not ext:
+        # Path might be like "001.jpg.enc" — extract the real extension
+        stem = Path(path).stem
+        ext = Path(stem).suffix.lower() if "." in stem else ".jpg"
+    content_types = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+    content_type = content_types.get(ext, "image/jpeg")
 
-# Legacy image serving (for migration)
-Path("data/images").mkdir(parents=True, exist_ok=True)
-app.mount("/data", StaticFiles(directory="data"), name="data")
+    return Response(content=image_data, media_type=content_type)
 
 
 @app.get("/")
