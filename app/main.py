@@ -174,6 +174,11 @@ async def owner_properties_page():
     return FileResponse(str(_static_dir / "owner-property.html"))
 
 
+@app.get("/owner/position")
+async def owner_position_page():
+    return FileResponse(str(_static_dir / "owner-position.html"))
+
+
 @app.get("/owner/settings")
 async def owner_settings_page():
     return FileResponse(str(_static_dir / "owner-settings.html"))

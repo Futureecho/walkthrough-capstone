@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Position Builder - Walkthru-X</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/verentyx-icon-32.png">
+<link rel="apple-touch-icon" href="/static/images/verentyx-icon-180.png">
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="flex-between">
+    <div class="header-inner">
+      <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
+      <div>
+        <h1 id="page-title">Add Position</h1>
+        <div class="subtitle" id="room-subtitle">Loading...</div>
+      </div>
+    </div>
+    <button class="btn btn-back" id="discard-btn-top">&lsaquo;</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Position name -->
+  <div class="card">
+    <label style="font-size:.85rem;color:var(--text-muted);margin-bottom:.25rem;display:block">Position Name</label>
+    <input type="text" id="position-name" placeholder="e.g. Center from Door">
+  </div>
+
+  <!-- Camera viewfinder -->
+  <div class="viewfinder" id="viewfinder">
+    <video id="camera" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <div class="guide-label" id="guide-label">position name</div>
+  </div>
+
+  <!-- Capture button -->
+  <button class="btn btn-primary btn-block" id="capture-btn">Capture Reference Photo</button>
+
+  <!-- Preview card (hidden until capture) -->
+  <div class="card hidden" id="preview-card" style="margin-top:.75rem">
+    <div class="flex-between mb-1">
+      <strong>Captured Photo</strong>
+      <button class="btn btn-ghost" id="retake-btn" style="padding:.2rem .5rem;font-size:.85rem">Retake</button>
+    </div>
+    <img id="preview-img" style="width:100%;border-radius:var(--radius);aspect-ratio:4/3;object-fit:cover">
+  </div>
+
+  <!-- Test Ghost button (hidden until capture) -->
+  <button class="btn btn-outline btn-block hidden" id="ghost-btn" style="margin-top:.5rem">Test Ghost Overlay</button>
+
+  <!-- Save / Discard -->
+  <div class="flex gap-1" style="margin-top:1rem">
+    <button class="btn btn-primary" style="flex:1" id="save-btn" disabled>Save Position</button>
+    <button class="btn" style="flex:1;background:var(--border)" id="discard-btn">Discard</button>
+  </div>
+</div>
+
+<script src="/static/js/owner-position.js?v=1"></script>
+</body>
+</html>

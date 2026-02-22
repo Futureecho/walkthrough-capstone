@@ -1,4 +1,4 @@
-/* owner-property.js — Property management */
+/* owner-property.js — Property management with position builder navigation */
 
 let currentPropertyId = null;
 
@@ -7,8 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('create-prop-btn').addEventListener('click', createProperty);
   document.getElementById('back-to-list').addEventListener('click', showList);
-  document.getElementById('add-position-btn').addEventListener('click', addPositionField);
   document.getElementById('add-room-btn').addEventListener('click', addRoomTemplate);
+
+  // Auto-open property detail if ?property=ID is present
+  const params = new URLSearchParams(window.location.search);
+  const autoOpen = params.get('property');
+  if (autoOpen) {
+    showDetail(autoOpen);
+  }
 });
 
 async function loadProperties() {
@@ -35,8 +41,8 @@ function renderPropertyList(props) {
     el.style.cursor = 'pointer';
     el.innerHTML = `
       <div>
-        <strong>${p.label}</strong>
-        ${p.address ? `<br><span class="text-muted" style="font-size:.85rem">${p.address}</span>` : ''}
+        <strong>${esc(p.label)}</strong>
+        ${p.address ? `<br><span class="text-muted" style="font-size:.85rem">${esc(p.address)}</span>` : ''}
       </div>
       <span class="text-muted" style="font-size:.85rem">${p.room_template_count} rooms &middot; ${p.session_count} sessions</span>
     `;
@@ -71,7 +77,6 @@ async function showDetail(propertyId) {
   document.getElementById('detail-address').textContent = prop.address || 'No address';
   document.getElementById('property-detail').classList.remove('hidden');
 
-  // Room templates
   renderRoomTemplates(prop.room_templates || []);
 
   // Hide list
@@ -81,6 +86,8 @@ async function showDetail(propertyId) {
 
 function showList() {
   currentPropertyId = null;
+  // Clear ?property= from URL
+  history.replaceState(null, '', '/owner/properties');
   document.getElementById('property-detail').classList.add('hidden');
   document.querySelector('#property-list').parentElement.classList.remove('hidden');
   document.querySelector('#create-prop-btn').parentElement.classList.remove('hidden');
@@ -95,263 +102,167 @@ function renderRoomTemplates(templates) {
   }
   div.innerHTML = '';
   templates.forEach(rt => {
-    const el = document.createElement('div');
-    el.className = 'room-item';
-    el.style.flexWrap = 'wrap';
-    const posLabels = (rt.positions || []).map(p => p.label || p.hint).join(', ');
-    const refCount = rt.reference_image_count || 0;
-    const refBadge = refCount > 0
-      ? `<span class="text-muted" style="font-size:.75rem;margin-left:.5rem">${refCount} ref photo${refCount !== 1 ? 's' : ''}</span>`
-      : '';
-    el.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <strong>${rt.name}</strong>${refBadge}
-        <br><span class="text-muted" style="font-size:.85rem">${posLabels || 'No positions'}</span>
-      </div>
+    const card = document.createElement('div');
+    card.style.cssText = 'border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.75rem';
+
+    // Room header with name + actions
+    const header = document.createElement('div');
+    header.className = 'flex-between mb-1';
+    header.innerHTML = `
+      <strong>${esc(rt.name)}</strong>
       <div class="flex gap-1">
-        <button class="btn btn-outline edit-room-btn" style="padding:.2rem .5rem;font-size:.8rem" data-room-id="${rt.id}">Edit</button>
-        <button class="btn btn-danger delete-room-btn" style="padding:.2rem .5rem;font-size:.8rem" data-room-id="${rt.id}">Delete</button>
+        <button class="btn btn-ghost" style="padding:.2rem .5rem;font-size:.8rem" data-action="rename">Rename</button>
+        <button class="btn btn-danger" style="padding:.2rem .5rem;font-size:.8rem" data-action="delete-room">Delete</button>
       </div>
     `;
-    el.querySelector('.delete-room-btn').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (!confirm(`Delete room template "${rt.name}"?`)) return;
-      await fetch(`/api/owner/rooms/${rt.id}`, { method: 'DELETE' });
-      showDetail(currentPropertyId);
-    });
-    el.querySelector('.edit-room-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      showEditForm(el, rt);
-    });
-    div.appendChild(el);
-  });
-}
+    header.querySelector('[data-action="rename"]').addEventListener('click', () => editRoomName(rt.id, rt.name));
+    header.querySelector('[data-action="delete-room"]').addEventListener('click', () => deleteRoom(rt.id, rt.name));
+    card.appendChild(header);
 
-async function showEditForm(container, rt) {
-  // Fetch existing reference images for this room template
-  let refImages = [];
-  try {
-    const rr = await fetch(`/api/owner/rooms/${rt.id}/reference-images`);
-    if (rr.ok) refImages = await rr.json();
-  } catch (e) { /* continue without refs */ }
-  const refMap = {};
-  refImages.forEach(img => { refMap[img.position_hint] = img; });
+    // Build ref image map from inline data
+    const refMap = {};
+    (rt.reference_images || []).forEach(img => { refMap[img.position_hint] = img; });
 
-  const positionsHtml = (rt.positions || []).map((p, i) => {
-    const hint = p.hint || p.label;
-    const ref = refMap[hint];
-    return buildEditPositionRow(p.label, p.hint, ref);
-  }).join('');
+    // Position rows
+    const positions = rt.positions || [];
+    if (positions.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'text-muted';
+      empty.style.fontSize = '.85rem';
+      empty.textContent = 'No positions yet';
+      card.appendChild(empty);
+    } else {
+      positions.forEach((pos, idx) => {
+        const hint = pos.hint || pos.label;
+        const ref = refMap[hint];
+        const row = document.createElement('div');
+        row.className = 'flex-between';
+        row.style.cssText = 'padding:.4rem 0;border-bottom:1px solid var(--border);align-items:center';
 
-  container.innerHTML = `
-    <div style="width:100%;padding:.5rem 0">
-      <input type="text" id="edit-room-name-${rt.id}" value="${rt.name}" placeholder="Room name" style="margin-bottom:.5rem">
-      <div id="edit-positions-${rt.id}">${positionsHtml}</div>
-      <button class="btn btn-outline" style="padding:.2rem .5rem;font-size:.8rem;margin-bottom:.5rem"
-        onclick="addEditPositionField('${rt.id}')">+ Add Position</button>
-      <div class="flex gap-1">
-        <button class="btn btn-primary" style="flex:1;padding:.4rem;font-size:.85rem" onclick="saveRoomEdit('${rt.id}')">Save</button>
-        <button class="btn" style="flex:1;padding:.4rem;font-size:.85rem;background:var(--border)" onclick="showDetail(currentPropertyId)">Cancel</button>
-      </div>
-    </div>
-  `;
-}
+        const left = document.createElement('div');
+        left.className = 'flex gap-1';
+        left.style.alignItems = 'center';
 
-function buildEditPositionRow(label, hint, ref) {
-  const refHtml = ref && ref.thumbnail_url
-    ? `<div class="edit-pos-ref" style="display:flex;align-items:center;gap:.3rem">
-        <img src="${ref.thumbnail_url}" style="width:40px;height:30px;object-fit:cover;border-radius:3px;border:1px solid var(--primary)">
-        <button class="btn btn-danger" style="padding:.1rem .3rem;font-size:.7rem" onclick="removeEditRefPhoto(this,'${ref.id}')">&times;</button>
-      </div>`
-    : `<label class="edit-pos-ref" style="display:flex;align-items:center;justify-content:center;width:40px;height:30px;border:1px dashed var(--border);border-radius:3px;cursor:pointer;font-size:.65rem;color:var(--text-secondary);flex-shrink:0">
-        Ref
-        <input type="file" accept="image/*" capture="environment" style="display:none" class="edit-pos-file"
-          onchange="previewEditRefPhoto(this)">
-      </label>`;
-  return `
-    <div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center" class="edit-pos-row">
-      <input type="text" placeholder="Position label" style="flex:1" class="edit-pos-label" value="${label || ''}">
-      <input type="text" placeholder="Hint" style="flex:1" class="edit-pos-hint" value="${hint || ''}">
-      ${refHtml}
-      <button class="btn btn-danger" style="padding:.2rem .5rem" onclick="this.parentElement.remove()">&times;</button>
-    </div>`;
-}
+        if (ref && ref.thumbnail_url) {
+          left.innerHTML = `<img src="${esc(ref.thumbnail_url)}" style="width:48px;height:36px;object-fit:cover;border-radius:3px;border:1px solid var(--primary);flex-shrink:0">`;
+        } else {
+          left.innerHTML = `<div style="width:48px;height:36px;border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--text-muted);flex-shrink:0">No ref</div>`;
+        }
+        const label = document.createElement('span');
+        label.style.fontSize = '.9rem';
+        label.textContent = pos.label || hint;
+        left.appendChild(label);
 
-function previewEditRefPhoto(input) {
-  if (!input.files || !input.files[0]) return;
-  const wrapper = input.closest('.edit-pos-ref');
-  const file = input.files[0];
-  const url = URL.createObjectURL(file);
-  wrapper.innerHTML = `
-    <img src="${url}" style="width:40px;height:30px;object-fit:cover;border-radius:3px;border:1px solid var(--primary)">
-    <button class="btn btn-danger" style="padding:.1rem .3rem;font-size:.7rem" onclick="clearEditRefPhoto(this)">&times;</button>
-    <input type="file" style="display:none" class="edit-pos-file">
-  `;
-  // Stash the file on the hidden input so saveRoomEdit can find it
-  wrapper.querySelector('.edit-pos-file').files = input.files;
-}
+        const right = document.createElement('div');
+        right.className = 'flex gap-1';
+        right.innerHTML = `
+          <button class="btn btn-ghost" style="padding:.2rem .5rem;font-size:.8rem" data-action="edit">Edit</button>
+          <button class="btn btn-danger" style="padding:.2rem .5rem;font-size:.8rem" data-action="delete">Delete</button>
+        `;
+        right.querySelector('[data-action="edit"]').addEventListener('click', () => editPosition(rt.id, idx));
+        right.querySelector('[data-action="delete"]').addEventListener('click', () => deletePosition(rt.id, idx, hint));
 
-function clearEditRefPhoto(btn) {
-  const wrapper = btn.closest('.edit-pos-ref');
-  wrapper.innerHTML = `
-    Ref
-    <input type="file" accept="image/*" capture="environment" style="display:none" class="edit-pos-file"
-      onchange="previewEditRefPhoto(this)">
-  `;
-  wrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;width:40px;height:30px;border:1px dashed var(--border);border-radius:3px;cursor:pointer;font-size:.65rem;color:var(--text-secondary);flex-shrink:0';
-  wrapper.tagName === 'DIV' || (wrapper.style.cursor = 'pointer');
-  // Make wrapper clickable to trigger file input
-  wrapper.addEventListener('click', () => wrapper.querySelector('.edit-pos-file')?.click());
-}
-
-async function removeEditRefPhoto(btn, imageId) {
-  try {
-    await fetch(`/api/owner/reference-images/${imageId}`, { method: 'DELETE' });
-  } catch (e) { /* continue */ }
-  const wrapper = btn.closest('.edit-pos-ref');
-  wrapper.outerHTML = `
-    <label class="edit-pos-ref" style="display:flex;align-items:center;justify-content:center;width:40px;height:30px;border:1px dashed var(--border);border-radius:3px;cursor:pointer;font-size:.65rem;color:var(--text-secondary);flex-shrink:0">
-      Ref
-      <input type="file" accept="image/*" capture="environment" style="display:none" class="edit-pos-file"
-        onchange="previewEditRefPhoto(this)">
-    </label>`;
-}
-
-function addEditPositionField(roomId) {
-  const container = document.getElementById(`edit-positions-${roomId}`);
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center';
-  row.className = 'edit-pos-row';
-  row.innerHTML = `
-    <input type="text" placeholder="Position label" style="flex:1" class="edit-pos-label">
-    <input type="text" placeholder="Hint" style="flex:1" class="edit-pos-hint">
-    <label class="edit-pos-ref" style="display:flex;align-items:center;justify-content:center;width:40px;height:30px;border:1px dashed var(--border);border-radius:3px;cursor:pointer;font-size:.65rem;color:var(--text-secondary);flex-shrink:0">
-      Ref
-      <input type="file" accept="image/*" capture="environment" style="display:none" class="edit-pos-file"
-        onchange="previewEditRefPhoto(this)">
-    </label>
-    <button class="btn btn-danger" style="padding:.2rem .5rem" onclick="this.parentElement.remove()">&times;</button>
-  `;
-  container.appendChild(row);
-}
-
-async function saveRoomEdit(roomId) {
-  const name = document.getElementById(`edit-room-name-${roomId}`).value.trim();
-  if (!name) return alert('Room name is required');
-
-  const posRows = document.querySelectorAll(`#edit-positions-${roomId} .edit-pos-row`);
-  const positions = [];
-  const pendingUploads = []; // {hint, file}
-  posRows.forEach(row => {
-    const label = row.querySelector('.edit-pos-label').value.trim();
-    const hint = row.querySelector('.edit-pos-hint').value.trim();
-    if (!label) return;
-    const resolvedHint = hint || label.toLowerCase().replace(/\s+/g, '-');
-    positions.push({ label, hint: resolvedHint });
-    const fileInput = row.querySelector('.edit-pos-file');
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-      pendingUploads.push({ hint: resolvedHint, file: fileInput.files[0] });
+        row.appendChild(left);
+        row.appendChild(right);
+        card.appendChild(row);
+      });
     }
-  });
 
-  const r = await fetch(`/api/owner/rooms/${roomId}`, {
+    // + Add Position button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-outline';
+    addBtn.style.cssText = 'padding:.3rem .6rem;font-size:.85rem;margin-top:.5rem;width:100%';
+    addBtn.textContent = '+ Add Position';
+    addBtn.addEventListener('click', () => addPosition(rt.id));
+    card.appendChild(addBtn);
+
+    div.appendChild(card);
+  });
+}
+
+// ── Navigation to position builder ───────────────────────
+
+function addPosition(roomId) {
+  window.location.href = `/owner/position?room=${roomId}&property=${currentPropertyId}`;
+}
+
+function editPosition(roomId, index) {
+  window.location.href = `/owner/position?room=${roomId}&property=${currentPropertyId}&index=${index}`;
+}
+
+// ── Position / Room actions ──────────────────────────────
+
+async function deletePosition(roomId, index, hint) {
+  if (!confirm(`Delete position "${hint}"?`)) return;
+
+  // Fetch current room template
+  const r = await fetch(`/api/owner/properties/${currentPropertyId}`);
+  if (!r.ok) return alert('Failed to load property');
+  const prop = await r.json();
+  const rt = (prop.room_templates || []).find(t => t.id === roomId);
+  if (!rt) return;
+
+  // Remove position from array
+  const positions = [...(rt.positions || [])];
+  positions.splice(index, 1);
+
+  // Update room template
+  const ur = await fetch(`/api/owner/rooms/${roomId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, positions }),
+    body: JSON.stringify({ positions }),
   });
-  if (!r.ok) return alert('Failed to update room template');
+  if (!ur.ok) return alert('Failed to update room template');
 
-  // Upload any new reference photos
-  for (const { hint, file } of pendingUploads) {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('position_hint', hint);
-    await fetch(`/api/owner/rooms/${roomId}/reference-images`, { method: 'POST', body: form });
+  // Delete reference image if exists
+  const refImages = (rt.reference_images || []).filter(img => img.position_hint === hint);
+  for (const img of refImages) {
+    await fetch(`/api/owner/reference-images/${img.id}`, { method: 'DELETE' });
   }
 
   showDetail(currentPropertyId);
 }
 
-function addPositionField() {
-  const container = document.getElementById('new-room-positions');
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center';
-  row.innerHTML = `
-    <input type="text" placeholder="Position label" style="flex:1" class="pos-label">
-    <input type="text" placeholder="Hint" style="flex:1" class="pos-hint">
-    <label class="new-pos-ref" style="display:flex;align-items:center;justify-content:center;width:40px;height:30px;border:1px dashed var(--border);border-radius:3px;cursor:pointer;font-size:.65rem;color:var(--text-secondary);flex-shrink:0">
-      Ref
-      <input type="file" accept="image/*" capture="environment" style="display:none" class="pos-file"
-        onchange="previewNewRefPhoto(this)">
-    </label>
-    <button class="btn btn-danger" style="padding:.2rem .5rem">&times;</button>
-  `;
-  row.querySelector('.btn-danger').addEventListener('click', () => row.remove());
-  container.appendChild(row);
+async function deleteRoom(roomId, name) {
+  if (!confirm(`Delete room "${name}" and all its positions?`)) return;
+  const r = await fetch(`/api/owner/rooms/${roomId}`, { method: 'DELETE' });
+  if (!r.ok) return alert('Failed to delete room');
+  showDetail(currentPropertyId);
 }
 
-function previewNewRefPhoto(input) {
-  if (!input.files || !input.files[0]) return;
-  const wrapper = input.closest('.new-pos-ref');
-  const file = input.files[0];
-  const url = URL.createObjectURL(file);
-  wrapper.innerHTML = `
-    <img src="${url}" style="width:40px;height:30px;object-fit:cover;border-radius:3px;border:1px solid var(--primary)">
-    <button class="btn btn-danger" style="padding:.1rem .3rem;font-size:.7rem" onclick="clearNewRefPhoto(this)">&times;</button>
-    <input type="file" style="display:none" class="pos-file">
-  `;
-  wrapper.querySelector('.pos-file').files = input.files;
+async function editRoomName(roomId, currentName) {
+  const newName = prompt('Rename room:', currentName);
+  if (!newName || newName.trim() === currentName) return;
+  const r = await fetch(`/api/owner/rooms/${roomId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: newName.trim() }),
+  });
+  if (!r.ok) return alert('Failed to rename room');
+  showDetail(currentPropertyId);
 }
 
-function clearNewRefPhoto(btn) {
-  const wrapper = btn.closest('.new-pos-ref');
-  wrapper.innerHTML = `
-    Ref
-    <input type="file" accept="image/*" capture="environment" style="display:none" class="pos-file"
-      onchange="previewNewRefPhoto(this)">
-  `;
-  wrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;width:40px;height:30px;border:1px dashed var(--border);border-radius:3px;cursor:pointer;font-size:.65rem;color:var(--text-secondary);flex-shrink:0';
-  wrapper.addEventListener('click', () => wrapper.querySelector('.pos-file')?.click());
-}
+// ── Simplified add room (name only) ─────────────────────
 
 async function addRoomTemplate() {
   if (!currentPropertyId) return;
   const name = document.getElementById('new-room-name').value.trim();
   if (!name) return alert('Room name is required');
 
-  const posRows = document.querySelectorAll('#new-room-positions > div');
-  const positions = [];
-  const pendingUploads = []; // {hint, file}
-  posRows.forEach(row => {
-    const label = row.querySelector('.pos-label').value.trim();
-    const hint = row.querySelector('.pos-hint').value.trim();
-    if (!label) return;
-    const resolvedHint = hint || label.toLowerCase().replace(/\s+/g, '-');
-    positions.push({ label, hint: resolvedHint });
-    const fileInput = row.querySelector('.pos-file');
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-      pendingUploads.push({ hint: resolvedHint, file: fileInput.files[0] });
-    }
-  });
-
   const r = await fetch(`/api/owner/properties/${currentPropertyId}/rooms`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, positions, display_order: 0 }),
+    body: JSON.stringify({ name, positions: [], display_order: 0 }),
   });
   if (!r.ok) return alert('Failed to add room template');
-  const room = await r.json();
-
-  // Upload any reference photos now that we have the room ID
-  for (const { hint, file } of pendingUploads) {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('position_hint', hint);
-    await fetch(`/api/owner/rooms/${room.id}/reference-images`, { method: 'POST', body: form });
-  }
-
   document.getElementById('new-room-name').value = '';
-  document.getElementById('new-room-positions').innerHTML = '';
   showDetail(currentPropertyId);
 }
 
+// ── Helpers ──────────────────────────────────────────────
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
