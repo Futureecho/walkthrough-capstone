@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join - Walkthru-X</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
+    <div class="subtitle">Join</div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Loading -->
+  <div class="card" id="loading-card">
+    <div class="text-center"><div class="spinner"></div></div>
+  </div>
+
+  <!-- Invalid Token -->
+  <div class="card hidden" id="invalid-card">
+    <h2>Invalid Link</h2>
+    <p class="text-muted">This invite or referral link is invalid or has expired.</p>
+    <a href="/owner/login" class="btn btn-primary btn-block" style="margin-top:1rem">Go to Login</a>
+  </div>
+
+  <!-- Join Form -->
+  <div class="card hidden" id="join-card">
+    <h2 id="join-heading">Create Account</h2>
+    <p class="text-muted mb-1" id="join-subtitle"></p>
+
+    <form id="join-form" autocomplete="off">
+      <!-- Company name — only shown for referral -->
+      <div id="company-name-group" class="hidden">
+        <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Company Name</label>
+        <input type="text" id="company-name" placeholder="Your company name">
+      </div>
+
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Display Name</label>
+      <input type="text" id="display-name" placeholder="Your name" required>
+
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Email</label>
+      <input type="email" id="join-email" placeholder="you@company.com" autocomplete="email" required>
+
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Password</label>
+      <input type="password" id="join-password" placeholder="At least 8 characters" autocomplete="new-password" required>
+
+      <label style="font-size:.85rem;color:var(--text-muted);display:block;margin-bottom:.25rem">Confirm Password</label>
+      <input type="password" id="join-confirm" placeholder="Confirm password" autocomplete="new-password" required>
+
+      <div id="join-error" style="color:var(--danger);font-size:.9rem;margin-bottom:.5rem;display:none"></div>
+      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+    </form>
+  </div>
+
+  <!-- Success -->
+  <div class="card hidden" id="success-card">
+    <h2>Account Created</h2>
+    <p class="text-muted" id="success-msg">Your account is ready. You can now log in.</p>
+    <a href="/owner/login" class="btn btn-primary btn-block" style="margin-top:1rem">Go to Login</a>
+  </div>
+</div>
+
+<script src="/static/js/join.js"></script>
+</body>
+</html>

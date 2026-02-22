@@ -76,7 +76,14 @@ async def run_capture_pipeline(
             "data": coverage_result,
         })
 
-        final_status = "passed" if coverage_result.get("complete", False) else "needs_coverage"
+        # All required guided positions captured → pass regardless of LLM coverage pct
+        required_hints = {"center-from-door", "center-opposite-wall",
+                          "corner-left-near", "corner-right-near",
+                          "corner-left-far", "corner-right-far", "ceiling"}
+        captured_hints = {img.orientation_hint for img in capture.images if img.orientation_hint}
+        all_required = required_hints.issubset(captured_hints)
+
+        final_status = "passed" if (coverage_result.get("complete", False) or all_required) else "needs_coverage"
         await crud.update_capture(
             db, capture,
             status=final_status,

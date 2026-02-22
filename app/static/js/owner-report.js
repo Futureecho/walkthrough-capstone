@@ -106,9 +106,10 @@ function renderReport() {
     let html = `<div class="report-room-header">${room}</div>`;
 
     // Status
+    const statusLabel = capture.status.replace(/_/g, ' ');
     html += `<div class="flex-between mb-1">
-      <span class="text-muted">Status: ${capture.status}</span>
-      <span class="badge ${capture.status === 'passed' ? 'badge-success' : 'badge-warning'}">${capture.status}</span>
+      <span class="text-muted">Status: ${statusLabel}</span>
+      <span class="badge ${capture.status === 'passed' ? 'badge-success' : 'badge-warning'}">${statusLabel}</span>
     </div>`;
 
     // Candidates from comparison

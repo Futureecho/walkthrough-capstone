@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Walkthrough Capture System",
+    title="Walkthru-X",
     description="Dispute-friendly move-in/move-out walkthrough capture with AI-powered quality, coverage, and comparison agents.",
     version="0.2.0",
     lifespan=lifespan,
@@ -106,6 +106,11 @@ app.mount("/data", StaticFiles(directory="data"), name="data")
 
 @app.get("/")
 async def root():
+    return FileResponse(str(_static_dir / "landing.html"))
+
+
+@app.get("/app")
+async def app_page():
     return FileResponse(str(_static_dir / "index.html"))
 
 
@@ -146,6 +151,11 @@ async def owner_settings_page():
     return FileResponse(str(_static_dir / "owner-settings.html"))
 
 
+@app.get("/owner/admin")
+async def owner_admin_page():
+    return FileResponse(str(_static_dir / "owner-admin.html"))
+
+
 @app.get("/owner/reports/{session_id}")
 async def owner_report_page(session_id: str):
     return FileResponse(str(_static_dir / "owner-report.html"))
@@ -156,6 +166,11 @@ async def owner_report_page(session_id: str):
 @app.get("/invite/{token}")
 async def invite_page(token: str):
     return FileResponse(str(_static_dir / "invite.html"))
+
+
+@app.get("/join/{token}")
+async def join_page(token: str):
+    return FileResponse(str(_static_dir / "join.html"))
 
 
 @app.get("/reset-password/{token}")

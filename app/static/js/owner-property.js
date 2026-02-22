@@ -280,7 +280,7 @@ function renderSessions(sessions) {
         <strong>${s.tenant_name}</strong>${s.tenant_name_2 ? ' & ' + s.tenant_name_2 : ''}
         <br><span class="text-muted" style="font-size:.85rem">${s.type.replace('_', '-')} &middot; ${new Date(s.created_at).toLocaleDateString()}</span>
       </div>
-      <span class="badge ${badgeClass}">${s.report_status}</span>
+      <span class="badge ${badgeClass}">${s.report_status.replace(/_/g, ' ')}</span>
     `;
     el.addEventListener('click', () => {
       window.location.href = `/owner/reports/${s.id}`;

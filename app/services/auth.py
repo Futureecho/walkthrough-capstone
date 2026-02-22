@@ -126,7 +126,7 @@ def generate_mfa_secret() -> str:
     return pyotp.random_base32()
 
 
-def get_mfa_provisioning_uri(secret: str, email: str, issuer: str = "PropertyInspect") -> str:
+def get_mfa_provisioning_uri(secret: str, email: str, issuer: str = "Walkthru-X") -> str:
     """Get the otpauth:// URI for QR code generation."""
     totp = pyotp.TOTP(secret)
     return totp.provisioning_uri(name=email, issuer_name=issuer)

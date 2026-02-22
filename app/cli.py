@@ -1,4 +1,4 @@
-"""CLI for PropertyInspect — bootstrap companies, manage data."""
+"""CLI for Walkthru-X — bootstrap companies, manage data."""
 
 from __future__ import annotations
 
@@ -197,7 +197,7 @@ async def cmd_migrate(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PropertyInspect CLI")
+    parser = argparse.ArgumentParser(description="Walkthru-X CLI")
     subparsers = parser.add_subparsers(dest="command")
 
     # create-company

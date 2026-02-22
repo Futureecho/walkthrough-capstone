@@ -8,14 +8,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const r = await fetch('/api/auth/me');
     if (r.status === 401) { window.location.href = '/owner/login'; return; }
     _currentUser = await r.json();
-    document.getElementById('user-info').textContent = _currentUser.display_name || _currentUser.email;
+    const userInfoEl = document.getElementById('user-info');
+    if (userInfoEl) userInfoEl.textContent = _currentUser.display_name || _currentUser.email;
 
     // Show admin features if admin
     if (_currentUser.role === 'admin') {
-      document.getElementById('admin-btn').classList.remove('hidden');
-      document.getElementById('admin-panel').classList.remove('hidden');
-      document.getElementById('export-card').classList.remove('hidden');
-      loadUsers();
+      const adminBtn = document.getElementById('admin-btn');
+      if (adminBtn) adminBtn.classList.remove('hidden');
+      const adminPanel = document.getElementById('admin-panel');
+      if (adminPanel) adminPanel.classList.remove('hidden');
+      const exportCard = document.getElementById('export-card');
+      if (exportCard) exportCard.classList.remove('hidden');
     }
   } catch (e) {
     window.location.href = '/owner/login';
@@ -28,13 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/owner/login';
   });
-
-  document.getElementById('admin-btn').addEventListener('click', () => {
-    document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
-  });
-
-  // Invite button
-  document.getElementById('invite-btn').addEventListener('click', sendInvite);
 
   // Export button
   document.getElementById('export-full-btn').addEventListener('click', async () => {
@@ -88,7 +84,7 @@ function renderQueue(containerId, items, emptyMsg) {
         </span>
       </div>
       ${reviewFlagBadge(item.review_flag)}
-      <span class="badge ${statusBadge(item.report_status)}">${item.report_status}</span>
+      <span class="badge ${statusBadge(item.report_status)}">${item.report_status.replace(/_/g, ' ')}</span>
     `;
     el.addEventListener('click', () => {
       window.location.href = `/owner/reports/${item.session_id}`;
@@ -113,66 +109,32 @@ function statusBadge(status) {
   }
 }
 
-// ── Admin: Users ────────────────────────────────────────
+// ── Admin: Generate Link ────────────────────────────────
 
-async function loadUsers() {
-  try {
-    const r = await fetch('/api/admin/users');
-    if (!r.ok) return;
-    const users = await r.json();
-    renderUsers(users);
-  } catch (e) {
-    document.getElementById('user-list').innerHTML = '<p class="text-muted">Failed to load users</p>';
-  }
-}
-
-function renderUsers(users) {
-  const div = document.getElementById('user-list');
-  if (!users.length) { div.innerHTML = '<p class="text-muted">No users</p>'; return; }
-
-  div.innerHTML = '';
-  users.forEach(u => {
-    const el = document.createElement('div');
-    el.className = 'room-item';
-    el.innerHTML = `
-      <div>
-        <strong>${u.display_name || u.email}</strong>
-        <br><span class="text-muted" style="font-size:.85rem">${u.email}</span>
-      </div>
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <span class="badge ${u.role === 'admin' ? 'badge-info' : u.role === 'inspector' ? 'badge-success' : 'badge-warning'}">${u.role}</span>
-        ${u.mfa_enabled ? '<span class="badge badge-success" style="font-size:.7rem">MFA</span>' : ''}
-        ${!u.is_active ? '<span class="badge badge-danger" style="font-size:.7rem">Inactive</span>' : ''}
-      </div>
-    `;
-    div.appendChild(el);
-  });
-}
-
-async function sendInvite() {
-  const email = document.getElementById('invite-email').value.trim();
-  const role = document.getElementById('invite-role').value;
-  const msgEl = document.getElementById('invite-msg');
-
-  if (!email) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = 'Enter an email'; return; }
+async function generateLink(type) {
+  const resultDiv = document.getElementById('link-result');
+  const urlInput = document.getElementById('link-url');
 
   try {
-    const r = await fetch('/api/admin/invite', {
+    const r = await fetch('/api/admin/invite-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, role }),
+      body: JSON.stringify({ type }),
     });
     const data = await r.json();
-    if (!r.ok) {
-      msgEl.style.color = 'var(--danger)';
-      msgEl.textContent = data.detail || 'Invite failed';
-      return;
-    }
-    msgEl.style.color = 'var(--success)';
-    msgEl.textContent = `Invite sent to ${email}`;
-    document.getElementById('invite-email').value = '';
+    if (!r.ok) { alert(data.detail || 'Failed'); return; }
+
+    const fullUrl = `${window.location.origin}${data.url}`;
+    urlInput.value = fullUrl;
+    resultDiv.classList.remove('hidden');
+
+    document.getElementById('copy-link-btn').onclick = () => {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        document.getElementById('copy-link-btn').textContent = 'Copied!';
+        setTimeout(() => { document.getElementById('copy-link-btn').textContent = 'Copy'; }, 2000);
+      });
+    };
   } catch (e) {
-    msgEl.style.color = 'var(--danger)';
-    msgEl.textContent = 'Connection error';
+    alert('Connection error');
   }
 }

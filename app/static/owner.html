@@ -3,21 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard - PropertyInspect</title>
+<title>Dashboard - Walkthru-X</title>
 <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 <div class="header">
   <div class="flex-between">
-    <div>
-      <h1>Dashboard</h1>
-      <div class="subtitle" id="user-info">Property Management</div>
+    <div class="header-inner">
+      <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-      <a href="/owner/properties" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Properties</a>
-      <a href="/owner/settings" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Settings</a>
-      <button id="admin-btn" class="btn hidden" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Admin</button>
-      <button id="logout-btn" class="btn" style="background:rgba(255,255,255,.2);color:#fff;padding:.4rem .8rem;font-size:.85rem">Logout</button>
+      <a href="/owner/properties" class="btn btn-ghost">Properties</a>
+      <a href="/owner/settings" class="btn btn-ghost">Settings</a>
+      <a href="/owner/admin" id="admin-btn" class="btn btn-ghost hidden">Admin</a>
+      <button id="logout-btn" class="btn btn-ghost">Logout</button>
     </div>
   </div>
 </div>
@@ -41,26 +40,23 @@
     </div>
   </div>
 
-  <!-- Admin Panel (hidden unless admin role) -->
+  <!-- Team Management (hidden unless admin role) -->
   <div class="card hidden" id="admin-panel">
     <h2>Team Management</h2>
-    <p class="text-muted mb-1">Manage users and invites</p>
+    <p class="text-muted mb-1">Generate shareable invite links</p>
 
-    <!-- Invite Form -->
-    <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
-      <input type="email" id="invite-email" placeholder="email@example.com" style="flex:1;min-width:200px">
-      <select id="invite-role" style="width:auto">
-        <option value="inspector">Inspector</option>
-        <option value="viewer">Viewer</option>
-        <option value="admin">Admin</option>
-      </select>
-      <button class="btn btn-primary" id="invite-btn" style="padding:.4rem .8rem">Invite</button>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <button class="btn btn-primary" onclick="generateLink('admin')" style="padding:.4rem .8rem">Admin Invite</button>
+      <button class="btn btn-primary" onclick="generateLink('inspector')" style="padding:.4rem .8rem">Inspector Invite</button>
+      <button class="btn btn-primary" onclick="generateLink('referral')" style="padding:.4rem .8rem">Referral Link</button>
     </div>
-    <div id="invite-msg" style="font-size:.85rem;margin-bottom:.5rem"></div>
 
-    <!-- User List -->
-    <div id="user-list">
-      <div class="spinner"></div>
+    <div id="link-result" class="hidden" style="margin-top:.5rem">
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <input type="text" id="link-url" readonly style="flex:1;font-size:.85rem;background:var(--bg-secondary)">
+        <button class="btn btn-primary" id="copy-link-btn" style="padding:.4rem .8rem;white-space:nowrap">Copy</button>
+      </div>
+      <p class="text-muted" style="font-size:.8rem;margin-top:.25rem">Link expires in 7 days</p>
     </div>
   </div>
 

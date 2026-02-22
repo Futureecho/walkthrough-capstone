@@ -73,9 +73,20 @@ class Invite(AuthBase, _AuthULIDMixin):
     __tablename__ = "invites"
 
     company_id: Mapped[str] = mapped_column(String(26), ForeignKey("companies.id"))
-    email: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="inspector")
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     invited_by: Mapped[str] = mapped_column(String(26), ForeignKey("users.id"))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Referral(AuthBase, _AuthULIDMixin):
+    __tablename__ = "referrals"
+
+    referred_by_company_id: Mapped[str] = mapped_column(String(26), ForeignKey("companies.id"))
+    referred_by_user_id: Mapped[str] = mapped_column(String(26), ForeignKey("users.id"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_company_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("companies.id"), nullable=True)

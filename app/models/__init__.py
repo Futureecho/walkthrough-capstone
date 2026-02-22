@@ -18,7 +18,7 @@ from app.models.candidate import Candidate
 from app.models.tenant_link import TenantLink
 
 # Auth models (central auth DB)
-from app.models.auth_models import AuthBase, Company, User, UserSession, PasswordReset, Invite
+from app.models.auth_models import AuthBase, Company, User, UserSession, PasswordReset, Invite, Referral
 
 __all__ = [
     # Tenant
@@ -26,5 +26,5 @@ __all__ = [
     "Session", "Capture", "CaptureImage", "Annotation", "Comparison",
     "Candidate", "TenantLink",
     # Auth
-    "AuthBase", "Company", "User", "UserSession", "PasswordReset", "Invite",
+    "AuthBase", "Company", "User", "UserSession", "PasswordReset", "Invite", "Referral",
 ]

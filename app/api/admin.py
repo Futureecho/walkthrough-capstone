@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.auth_engine import get_auth_db
 from app.dependencies import require_role
-from app.models.auth_models import User, Company, Invite
+from app.models.auth_models import User, Company, Invite, Referral
 from app.services.auth import AuthContext, hash_password, _hash_token
 from app.services.email import send_invite_email
 
@@ -27,6 +27,10 @@ _admin_dep = require_role("admin")
 class InviteRequest(BaseModel):
     email: str
     role: str = "inspector"
+
+
+class InviteLinkRequest(BaseModel):
+    type: str  # "admin" | "inspector" | "referral"
 
 
 class UserRoleUpdate(BaseModel):
@@ -81,9 +85,45 @@ async def send_invite(
     company = await db.get(Company, auth.company_id)
     company_name = company.name if company else "your company"
 
-    send_invite_email(body.email, token, company_name, auth.display_name or auth.email)
+    email_sent = send_invite_email(body.email, token, company_name, auth.display_name or auth.email)
 
-    return {"ok": True, "email": body.email, "role": body.role}
+    return {"ok": True, "email": body.email, "role": body.role, "email_sent": email_sent}
+
+
+@router.post("/invite-link")
+async def generate_invite_link(
+    body: InviteLinkRequest,
+    auth: AuthContext = Depends(_admin_dep),
+    db: AsyncSession = Depends(get_auth_db),
+):
+    """Generate a shareable invite or referral link (no email required)."""
+    if body.type not in ("admin", "inspector", "referral"):
+        return JSONResponse(status_code=400, content={"detail": "Invalid type — must be admin, inspector, or referral"})
+
+    token = secrets.token_urlsafe(48)
+    token_hash = _hash_token(token)
+
+    if body.type == "referral":
+        referral = Referral(
+            referred_by_company_id=auth.company_id,
+            referred_by_user_id=auth.user_id,
+            token_hash=token_hash,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        db.add(referral)
+    else:
+        invite = Invite(
+            company_id=auth.company_id,
+            email=None,
+            role=body.type,  # "admin" or "inspector"
+            token_hash=token_hash,
+            invited_by=auth.user_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        db.add(invite)
+
+    await db.commit()
+    return {"url": f"/join/{token}"}
 
 
 # ── Users ─────────────────────────────────────────────────
