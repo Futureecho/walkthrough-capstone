@@ -577,7 +577,11 @@ async function show360Setup() {
       </div>
       <p class="text-muted" style="font-size:.85rem;margin-bottom:1rem">No position setup needed — sectors are determined automatically by compass heading.</p>
     </div>
-    <button class="btn btn-primary btn-block" id="try-360-btn">Try 360° Capture</button>
+    <div class="card" style="border-color:var(--primary)">
+      <p style="font-size:.9rem"><strong>Capture Reference Images</strong></p>
+      <p class="text-muted" style="font-size:.85rem">Use the 360° capture below to save reference photos for this room. These references are used for AI comparison during move-out inspections.</p>
+    </div>
+    <button class="btn btn-primary btn-block" id="try-360-btn">Capture 360° References</button>
     <a href="/owner/properties?property=${propertyId}" class="btn btn-outline btn-block mt-1">Back to Property</a>
   `;
 

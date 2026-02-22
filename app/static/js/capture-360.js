@@ -61,7 +61,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Preview mode when no session (owner testing the capture experience)
   previewMode = !sessionId;
 
-  document.getElementById('room-title').textContent = `${roomName || 'Room'} — 360°`;
+  const modeLabel = previewMode && roomTemplateId ? '360° References' : '360°';
+  document.getElementById('room-title').textContent = `${roomName || 'Room'} — ${modeLabel}`;
 
   // Fix back links
   if (tenantToken) {
@@ -504,8 +505,13 @@ function updateProgress() {
   document.getElementById('capture-subtitle').textContent = `${done} of ${SECTOR_COUNT} sectors`;
 
   const doneBtn = document.getElementById('done-btn');
-  doneBtn.textContent = `Done — ${done}/${SECTOR_COUNT} captured`;
-  doneBtn.disabled = previewMode ? false : done < MIN_SECTORS_DONE;
+  if (previewMode && roomTemplateId) {
+    doneBtn.textContent = done > 0 ? `Save ${done} Sectors as References` : 'Capture sectors first';
+    doneBtn.disabled = done === 0;
+  } else {
+    doneBtn.textContent = `Done — ${done}/${SECTOR_COUNT} captured`;
+    doneBtn.disabled = previewMode ? false : done < MIN_SECTORS_DONE;
+  }
 }
 
 function updateGapGuidance() {
@@ -558,6 +564,8 @@ function flashViewfinder() {
 
 // ── Done flow ─────────────────────────────────────────────
 async function finishCapture() {
+  const doneBtn = document.getElementById('done-btn');
+
   if (captureId) {
     try {
       await fetch(`/api/captures/${captureId}/submit${tokenParam()}`, { method: 'POST' });
@@ -566,7 +574,13 @@ async function finishCapture() {
 
   // Owner mode: upload captured sectors as reference images
   if (previewMode && roomTemplateId && Object.keys(sectorBlobs).length > 0) {
-    setGuidance('Saving reference images...', 'info');
+    doneBtn.disabled = true;
+    doneBtn.textContent = 'Saving references...';
+    setGuidance('Uploading reference images...', 'info');
+
+    let saved = 0;
+    const total = Object.keys(sectorBlobs).length;
+
     try {
       // Delete existing 360 references first
       const existingR = await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`);
@@ -585,13 +599,23 @@ async function finishCapture() {
         form.append('file', blob, `sector_${idx}.jpg`);
         form.append('position_hint', `sector_${idx}`);
 
-        await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`, {
+        const r = await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`, {
           method: 'POST',
           body: form,
         });
+        if (r.ok) saved++;
+        doneBtn.textContent = `Saving... ${saved}/${total}`;
       }
+
+      setGuidance(`Saved ${saved} reference images!`, 'success');
+      doneBtn.textContent = `Saved ${saved} references!`;
+
+      // Brief delay so user sees the success state
+      await new Promise(r => setTimeout(r, 1200));
     } catch (e) {
       console.warn('Failed to save reference images:', e);
+      setGuidance('Some references failed to save', 'warn');
+      await new Promise(r => setTimeout(r, 1500));
     }
   }
 
