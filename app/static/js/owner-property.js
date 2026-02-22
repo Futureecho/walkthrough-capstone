@@ -119,38 +119,41 @@ function renderRoomTemplates(templates) {
     header.querySelector('[data-action="delete-room"]').addEventListener('click', () => deleteRoom(rt.id, rt.name));
     card.appendChild(header);
 
-    // Capture mode selector
+    // Capture mode buttons
     const modeRow = document.createElement('div');
-    modeRow.className = 'flex-between mb-1';
+    modeRow.className = 'flex gap-1 mb-1';
     modeRow.style.cssText = 'padding:.4rem 0';
-    const modeLabel = document.createElement('span');
-    modeLabel.className = 'text-muted';
-    modeLabel.style.fontSize = '.85rem';
-    modeLabel.textContent = 'Capture mode:';
-    const modeSelect = document.createElement('select');
-    modeSelect.style.cssText = 'width:auto;margin:0;padding:.2rem .5rem;font-size:.85rem';
-    modeSelect.innerHTML = `
-      <option value="traditional"${rt.capture_mode !== '360' ? ' selected' : ''}>Traditional</option>
-      <option value="360"${rt.capture_mode === '360' ? ' selected' : ''}>360°</option>
-    `;
-    modeSelect.addEventListener('change', async () => {
-      const newMode = modeSelect.value;
-      const r = await fetch(`/api/owner/rooms/${rt.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ capture_mode: newMode }),
-      });
-      if (!r.ok) { alert('Failed to update capture mode'); return; }
-      if (newMode === 'traditional') {
-        // Go straight to position builder
+
+    async function selectMode(mode) {
+      if (mode !== rt.capture_mode) {
+        const r = await fetch(`/api/owner/rooms/${rt.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ capture_mode: mode }),
+        });
+        if (!r.ok) { alert('Failed to update capture mode'); return; }
+      }
+      if (mode === 'traditional') {
         window.location.href = `/owner/position?room=${rt.id}&property=${currentPropertyId}`;
       } else {
-        // 360 — no positions to configure, just refresh to show the 360 state
-        showDetail(currentPropertyId);
+        window.location.href = `/owner/position?room=${rt.id}&property=${currentPropertyId}&mode=360`;
       }
-    });
-    modeRow.appendChild(modeLabel);
-    modeRow.appendChild(modeSelect);
+    }
+
+    const tradBtn = document.createElement('button');
+    tradBtn.className = rt.capture_mode !== '360' ? 'btn btn-primary' : 'btn btn-outline';
+    tradBtn.style.cssText = 'flex:1;padding:.4rem .6rem;font-size:.85rem';
+    tradBtn.textContent = 'Traditional';
+    tradBtn.addEventListener('click', () => selectMode('traditional'));
+
+    const panoBtn = document.createElement('button');
+    panoBtn.className = rt.capture_mode === '360' ? 'btn btn-primary' : 'btn btn-outline';
+    panoBtn.style.cssText = 'flex:1;padding:.4rem .6rem;font-size:.85rem';
+    panoBtn.textContent = '360°';
+    panoBtn.addEventListener('click', () => selectMode('360'));
+
+    modeRow.appendChild(tradBtn);
+    modeRow.appendChild(panoBtn);
     card.appendChild(modeRow);
 
     const is360 = rt.capture_mode === '360';

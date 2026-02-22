@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // 360 mode — show setup confirmation instead of position builder
+  if (params.get('mode') === '360') {
+    await show360Setup();
+    return;
+  }
+
   // Wire up buttons
   document.getElementById('capture-btn').addEventListener('click', capturePhoto);
   document.getElementById('accept-btn').addEventListener('click', acceptPhoto);
@@ -532,6 +538,56 @@ async function savePosition() {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save Position';
   }
+}
+
+// ── 360 Setup View ───────────────────────────────────────
+async function show360Setup() {
+  // Fetch room name
+  let roomName = 'Room';
+  try {
+    const r = await fetch(`/api/owner/properties/${propertyId}`);
+    if (r.status === 401) { window.location.href = '/owner/login'; return; }
+    if (r.ok) {
+      const prop = await r.json();
+      const rt = (prop.room_templates || []).find(t => t.id === roomId);
+      if (rt) roomName = rt.name;
+    }
+  } catch (e) { /* use default */ }
+
+  // Replace page content
+  const container = document.querySelector('.container');
+  container.innerHTML = `
+    <div style="margin-bottom:.75rem">
+      <span class="text-muted" style="font-size:.9rem">${roomName}</span>
+    </div>
+    <div class="card" style="text-align:center;padding:2rem 1rem">
+      <div style="font-size:3rem;margin-bottom:.75rem">&#x1F504;</div>
+      <h2 style="margin-bottom:.5rem">360° Panoramic Capture</h2>
+      <p class="text-muted" style="margin-bottom:1rem">
+        This room is configured for 360° panoramic capture.<br>
+        Tenants will stand in the center of the room and slowly pan their phone in a full circle.
+      </p>
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:1rem;text-align:left">
+        <p style="font-size:.9rem;margin-bottom:.5rem"><strong>How it works:</strong></p>
+        <p class="text-muted" style="font-size:.85rem;margin-bottom:.25rem">&#x2022; 360° divided into 12 sectors of 30° each</p>
+        <p class="text-muted" style="font-size:.85rem;margin-bottom:.25rem">&#x2022; Device compass tracks heading in real-time</p>
+        <p class="text-muted" style="font-size:.85rem;margin-bottom:.25rem">&#x2022; Photos auto-capture when the phone is held steady</p>
+        <p class="text-muted" style="font-size:.85rem;margin-bottom:.25rem">&#x2022; Panoramic strip shows coverage progress</p>
+        <p class="text-muted" style="font-size:.85rem">&#x2022; Gap guidance directs tenant to uncovered sectors</p>
+      </div>
+      <p class="text-muted" style="font-size:.85rem;margin-bottom:1rem">No position setup needed — sectors are determined automatically by compass heading.</p>
+    </div>
+    <button class="btn btn-primary btn-block" id="back-360-btn">Done</button>
+  `;
+
+  // Back button in header
+  document.getElementById('discard-btn-top').addEventListener('click', () => {
+    window.location.href = `/owner/properties?property=${propertyId}`;
+  });
+
+  document.getElementById('back-360-btn').addEventListener('click', () => {
+    window.location.href = `/owner/properties?property=${propertyId}`;
+  });
 }
 
 function discard() {
