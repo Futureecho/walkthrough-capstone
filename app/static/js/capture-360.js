@@ -572,32 +572,35 @@ async function finishCapture() {
     } catch (e) { /* non-critical */ }
   }
 
-  // Owner mode: upload captured sectors as reference images
+  // Owner mode: create a reference set, upload sectors into it, then activate
   if (previewMode && roomTemplateId && Object.keys(sectorBlobs).length > 0) {
     doneBtn.disabled = true;
     doneBtn.textContent = 'Saving references...';
-    setGuidance('Uploading reference images...', 'info');
+    setGuidance('Creating reference set...', 'info');
 
     let saved = 0;
     const total = Object.keys(sectorBlobs).length;
 
     try {
-      // Delete existing 360 references first
-      const existingR = await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`);
-      if (existingR.ok) {
-        const existing = await existingR.json();
-        for (const img of existing) {
-          if (img.id) {
-            await fetch(`/api/owner/reference-images/${img.id}`, { method: 'DELETE' }).catch(() => {});
-          }
-        }
-      }
+      // Create a new reference image set
+      const setR = await fetch(`/api/owner/rooms/${roomTemplateId}/reference-sets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: `360° — ${new Date().toLocaleDateString()}`,
+          capture_mode: '360',
+        }),
+      });
+      if (!setR.ok) throw new Error('Failed to create reference set');
+      const refSet = await setR.json();
+      const setId = refSet.id;
 
-      // Upload each captured sector as a reference image
+      // Upload each captured sector into the set
       for (const [idx, blob] of Object.entries(sectorBlobs)) {
         const form = new FormData();
         form.append('file', blob, `sector_${idx}.jpg`);
         form.append('position_hint', `sector_${idx}`);
+        form.append('set_id', setId);
 
         const r = await fetch(`/api/owner/rooms/${roomTemplateId}/reference-images`, {
           method: 'POST',
@@ -607,10 +610,12 @@ async function finishCapture() {
         doneBtn.textContent = `Saving... ${saved}/${total}`;
       }
 
+      // Activate this set as the baseline
+      await fetch(`/api/owner/reference-sets/${setId}/activate`, { method: 'POST' });
+
       setGuidance(`Saved ${saved} reference images!`, 'success');
       doneBtn.textContent = `Saved ${saved} references!`;
 
-      // Brief delay so user sees the success state
       await new Promise(r => setTimeout(r, 1200));
     } catch (e) {
       console.warn('Failed to save reference images:', e);

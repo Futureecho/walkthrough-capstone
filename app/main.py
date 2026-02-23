@@ -10,6 +10,8 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 
+from sqlalchemy import text
+
 from app.db.engine import engine, tenant_pool
 from app.db.auth_engine import auth_engine
 from app.models import Base, AuthBase
@@ -42,13 +44,32 @@ async def _link_expiry_checker():
 
 
 async def _init_existing_tenant_dbs():
-    """On startup, warm the engine pool for all existing company dirs."""
+    """On startup, warm the engine pool and migrate existing company DBs."""
+    import logging
+    logger = logging.getLogger(__name__)
     companies_dir = Path("data/companies")
     if not companies_dir.exists():
         return
     for company_dir in companies_dir.iterdir():
         if company_dir.is_dir() and (company_dir / "tenant.db").exists():
-            tenant_pool.get_engine(company_dir.name)
+            company_id = company_dir.name
+            eng = tenant_pool.get_engine(company_id)
+            # Run create_all to add any new tables (e.g. reference_image_sets)
+            async with eng.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            # Add new columns to existing tables (safe to fail if already exists)
+            _alter_stmts = [
+                "ALTER TABLE reference_images ADD COLUMN set_id VARCHAR(26) REFERENCES reference_image_sets(id) ON DELETE CASCADE",
+                "ALTER TABLE room_templates ADD COLUMN active_ref_set_id VARCHAR(26) REFERENCES reference_image_sets(id) ON DELETE SET NULL",
+                "ALTER TABLE comparisons ADD COLUMN reference_set_id VARCHAR(26) REFERENCES reference_image_sets(id) ON DELETE SET NULL",
+            ]
+            async with eng.begin() as conn:
+                for stmt in _alter_stmts:
+                    try:
+                        await conn.execute(text(stmt))
+                    except Exception:
+                        pass  # Column already exists
+            logger.info(f"Migrated tenant DB for company {company_id}")
 
 
 @asynccontextmanager
@@ -61,7 +82,7 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Warm tenant engine pool for existing companies
+    # Warm tenant engine pool + migrate existing company DBs
     await _init_existing_tenant_dbs()
 
     # Ensure base data directories exist

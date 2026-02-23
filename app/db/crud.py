@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import (
     CompanySettings, Property, RoomTemplate, Session,
     Capture, CaptureImage, Annotation, Comparison, Candidate,
-    TenantLink, ReferenceImage, Technician, Concern, WorkOrder,
+    TenantLink, ReferenceImageSet, ReferenceImage, Technician,
+    Concern, WorkOrder,
 )
 
 
@@ -179,6 +180,73 @@ async def count_reference_images(db: AsyncSession, room_template_id: str) -> int
         select(ReferenceImage).where(ReferenceImage.room_template_id == room_template_id)
     )
     return len(result.scalars().all())
+
+
+# ── Reference Image Sets ─────────────────────────────────
+
+async def create_reference_image_set(
+    db: AsyncSession, room_template_id: str, label: str = "",
+    capture_mode: str = "traditional",
+) -> ReferenceImageSet:
+    ref_set = ReferenceImageSet(
+        room_template_id=room_template_id,
+        label=label,
+        capture_mode=capture_mode,
+    )
+    db.add(ref_set)
+    await db.commit()
+    await db.refresh(ref_set)
+    return ref_set
+
+
+async def get_reference_image_set(db: AsyncSession, set_id: str) -> ReferenceImageSet | None:
+    return await db.get(ReferenceImageSet, set_id)
+
+
+async def list_reference_image_sets(
+    db: AsyncSession, room_template_id: str,
+) -> list[ReferenceImageSet]:
+    result = await db.execute(
+        select(ReferenceImageSet)
+        .where(ReferenceImageSet.room_template_id == room_template_id)
+        .order_by(ReferenceImageSet.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def delete_reference_image_set(db: AsyncSession, ref_set: ReferenceImageSet) -> None:
+    await db.delete(ref_set)
+    await db.commit()
+
+
+async def update_reference_image_set(
+    db: AsyncSession, ref_set: ReferenceImageSet, **kwargs,
+) -> ReferenceImageSet:
+    for k, v in kwargs.items():
+        setattr(ref_set, k, v)
+    await db.commit()
+    await db.refresh(ref_set)
+    return ref_set
+
+
+async def get_or_create_traditional_set(
+    db: AsyncSession, room_template_id: str,
+) -> ReferenceImageSet:
+    """Get the most recent traditional set for a room, or create one."""
+    result = await db.execute(
+        select(ReferenceImageSet)
+        .where(
+            ReferenceImageSet.room_template_id == room_template_id,
+            ReferenceImageSet.capture_mode == "traditional",
+        )
+        .order_by(ReferenceImageSet.created_at.desc())
+    )
+    existing = result.scalars().first()
+    if existing:
+        return existing
+    return await create_reference_image_set(
+        db, room_template_id, capture_mode="traditional",
+    )
 
 
 # ── Move-in Reference Images (ghost overlay) ─────────────

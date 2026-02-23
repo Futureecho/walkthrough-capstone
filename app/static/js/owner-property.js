@@ -168,9 +168,12 @@ function renderRoomTemplates(templates) {
     } else {
       // Traditional mode — show positions
 
-      // Build ref image map from inline data
+      // Build ref image map from active set images (or all images as fallback)
       const refMap = {};
-      (rt.reference_images || []).forEach(img => { refMap[img.position_hint] = img; });
+      const activeSetId = rt.active_ref_set_id;
+      const activeSet = (rt.reference_sets || []).find(s => s.id === activeSetId);
+      const refSource = activeSet ? activeSet.images : (rt.reference_images || []);
+      refSource.forEach(img => { refMap[img.position_hint] = img; });
 
       // Position rows
       const positions = rt.positions || [];
@@ -226,8 +229,105 @@ function renderRoomTemplates(templates) {
       card.appendChild(addBtn);
     }
 
+    // Reference Sets section
+    const sets = rt.reference_sets || [];
+    if (sets.length > 0) {
+      const setsSection = document.createElement('div');
+      setsSection.style.cssText = 'margin-top:.75rem;border-top:1px solid var(--border);padding-top:.5rem';
+
+      const setsHeader = document.createElement('div');
+      setsHeader.className = 'flex-between mb-1';
+      setsHeader.innerHTML = `<span style="font-size:.85rem;font-weight:600">Reference Sets (${sets.length})</span>`;
+      setsSection.appendChild(setsHeader);
+
+      sets.forEach(s => {
+        const setRow = document.createElement('div');
+        setRow.style.cssText = 'padding:.4rem .5rem;margin-bottom:.4rem;border-radius:var(--radius);' +
+          (s.is_active
+            ? 'border:1px solid var(--primary);background:rgba(0,214,143,.06)'
+            : 'border:1px solid var(--border)');
+
+        const topRow = document.createElement('div');
+        topRow.className = 'flex-between';
+        topRow.style.alignItems = 'center';
+
+        const info = document.createElement('div');
+        const dateStr = new Date(s.created_at).toLocaleDateString();
+        const setLabel = s.label || `${s.capture_mode} — ${dateStr}`;
+        info.innerHTML = `
+          <span style="font-size:.85rem">${esc(setLabel)}</span>
+          ${s.is_active ? '<span style="font-size:.7rem;color:var(--primary);margin-left:.4rem;font-weight:600">ACTIVE</span>' : ''}
+          <br><span class="text-muted" style="font-size:.75rem">${s.image_count} images &middot; ${dateStr}</span>
+        `;
+
+        const actions = document.createElement('div');
+        actions.className = 'flex gap-1';
+
+        if (!s.is_active) {
+          const activateBtn = document.createElement('button');
+          activateBtn.className = 'btn btn-ghost';
+          activateBtn.style.cssText = 'padding:.15rem .4rem;font-size:.75rem';
+          activateBtn.textContent = 'Activate';
+          activateBtn.addEventListener('click', () => activateRefSet(s.id));
+          actions.appendChild(activateBtn);
+        }
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger';
+        deleteBtn.style.cssText = 'padding:.15rem .4rem;font-size:.75rem';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => deleteRefSet(s.id, setLabel));
+        actions.appendChild(deleteBtn);
+
+        topRow.appendChild(info);
+        topRow.appendChild(actions);
+        setRow.appendChild(topRow);
+
+        // Thumbnail strip for the set's images
+        if (s.images && s.images.length > 0) {
+          const thumbStrip = document.createElement('div');
+          thumbStrip.style.cssText = 'display:flex;gap:3px;margin-top:.3rem;overflow-x:auto';
+          s.images.slice(0, 8).forEach(img => {
+            if (img.thumbnail_url) {
+              const thumb = document.createElement('img');
+              thumb.src = img.thumbnail_url;
+              thumb.style.cssText = 'width:40px;height:30px;object-fit:cover;border-radius:2px;flex-shrink:0';
+              thumbStrip.appendChild(thumb);
+            }
+          });
+          if (s.images.length > 8) {
+            const more = document.createElement('span');
+            more.className = 'text-muted';
+            more.style.cssText = 'font-size:.7rem;align-self:center;padding:0 .3rem';
+            more.textContent = `+${s.images.length - 8}`;
+            thumbStrip.appendChild(more);
+          }
+          setRow.appendChild(thumbStrip);
+        }
+
+        setsSection.appendChild(setRow);
+      });
+
+      card.appendChild(setsSection);
+    }
+
     div.appendChild(card);
   });
+}
+
+// ── Reference Set actions ────────────────────────────────
+
+async function activateRefSet(setId) {
+  const r = await fetch(`/api/owner/reference-sets/${setId}/activate`, { method: 'POST' });
+  if (!r.ok) return alert('Failed to activate reference set');
+  showDetail(currentPropertyId);
+}
+
+async function deleteRefSet(setId, label) {
+  if (!confirm(`Delete reference set "${label}"? This cannot be undone.`)) return;
+  const r = await fetch(`/api/owner/reference-sets/${setId}`, { method: 'DELETE' });
+  if (!r.ok) return alert('Failed to delete reference set');
+  showDetail(currentPropertyId);
 }
 
 // ── Navigation to position builder ───────────────────────

@@ -278,22 +278,55 @@ def build_comparison_graph() -> StateGraph:
 # ── Public API ────────────────────────────────────────────
 
 async def run_comparison(comparison: Comparison, db: AsyncSession) -> dict:
-    """Run the comparison agent on a move-in/move-out pair."""
+    """Run the comparison agent on a move-in/move-out pair.
+
+    If the comparison has a reference_set_id, those reference images are used
+    as the baseline instead of move-in capture images.  If not, falls back
+    to the room's active reference set (if any), then to the move-in capture.
+    """
     settings = get_settings()
 
-    # Load captures and their images
-    mi_capture = await crud.get_capture(db, comparison.move_in_capture_id)
     mo_capture = await crud.get_capture(db, comparison.move_out_capture_id)
+    if not mo_capture:
+        return {"status": "error", "message": "Missing move-out capture"}
 
-    if not mi_capture or not mo_capture:
-        return {"status": "error", "message": "Missing captures"}
-
-    mi_images = [{"id": img.id, "file_path": img.file_path,
-                   "orientation_hint": img.orientation_hint, "seq": img.seq}
-                  for img in mi_capture.images]
     mo_images = [{"id": img.id, "file_path": img.file_path,
                    "orientation_hint": img.orientation_hint, "seq": img.seq}
                   for img in mo_capture.images]
+
+    # Determine baseline images — prefer reference set, fall back to move-in capture
+    mi_images = []
+    ref_set_id = comparison.reference_set_id
+
+    if not ref_set_id:
+        # Check the room template for an active reference set
+        from app.models import RoomTemplate
+        from sqlalchemy import select
+        result = await db.execute(
+            select(RoomTemplate).where(RoomTemplate.name == comparison.room)
+        )
+        rt = result.scalars().first()
+        if rt and rt.active_ref_set_id:
+            ref_set_id = rt.active_ref_set_id
+            # Record which set we used
+            comparison.reference_set_id = ref_set_id
+            await db.commit()
+
+    if ref_set_id:
+        ref_set = await crud.get_reference_image_set(db, ref_set_id)
+        if ref_set and ref_set.images:
+            mi_images = [{"id": img.id, "file_path": img.file_path,
+                           "orientation_hint": img.position_hint, "seq": img.seq}
+                          for img in ref_set.images]
+
+    # Fall back to move-in capture if no reference set images
+    if not mi_images:
+        mi_capture = await crud.get_capture(db, comparison.move_in_capture_id)
+        if not mi_capture:
+            return {"status": "error", "message": "Missing baseline images"}
+        mi_images = [{"id": img.id, "file_path": img.file_path,
+                       "orientation_hint": img.orientation_hint, "seq": img.seq}
+                      for img in mi_capture.images]
 
     initial_state: ComparisonState = {
         "comparison_id": comparison.id,

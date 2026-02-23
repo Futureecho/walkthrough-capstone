@@ -142,15 +142,40 @@ async def get_owner_property(
                 "display_order": rt.display_order,
                 "positions": rt.positions,
                 "capture_mode": rt.capture_mode,
+                "active_ref_set_id": rt.active_ref_set_id,
                 "created_at": rt.created_at.isoformat(),
                 "reference_image_count": len(rt.reference_images) if rt.reference_images else 0,
                 "reference_images": [
                     {
                         "id": img.id,
+                        "set_id": img.set_id,
                         "position_hint": img.position_hint,
                         "thumbnail_url": "/" + img.thumbnail_path if img.thumbnail_path else None,
                     }
                     for img in (rt.reference_images or [])
+                ],
+                "reference_sets": [
+                    {
+                        "id": s.id,
+                        "label": s.label,
+                        "capture_mode": s.capture_mode,
+                        "image_count": s.image_count,
+                        "is_active": rt.active_ref_set_id == s.id,
+                        "created_at": s.created_at.isoformat(),
+                        "images": [
+                            {
+                                "id": img.id,
+                                "position_hint": img.position_hint,
+                                "thumbnail_url": "/" + img.thumbnail_path if img.thumbnail_path else None,
+                            }
+                            for img in (s.images or [])
+                        ],
+                    }
+                    for s in sorted(
+                        (rt.reference_sets or []),
+                        key=lambda s: s.created_at,
+                        reverse=True,
+                    )
                 ],
             }
             for rt in room_templates

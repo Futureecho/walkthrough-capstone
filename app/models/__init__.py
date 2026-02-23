@@ -16,6 +16,7 @@ from app.models.annotation import Annotation
 from app.models.comparison import Comparison
 from app.models.candidate import Candidate
 from app.models.tenant_link import TenantLink
+from app.models.reference_image_set import ReferenceImageSet
 from app.models.reference_image import ReferenceImage
 from app.models.technician import Technician
 from app.models.concern import Concern
@@ -28,7 +29,7 @@ __all__ = [
     # Tenant
     "Base", "CompanySettings", "Property", "RoomTemplate",
     "Session", "Capture", "CaptureImage", "Annotation", "Comparison",
-    "Candidate", "TenantLink", "ReferenceImage",
+    "Candidate", "TenantLink", "ReferenceImageSet", "ReferenceImage",
     "Technician", "Concern", "WorkOrder",
     # Auth
     "AuthBase", "Company", "User", "UserSession", "PasswordReset", "Invite", "Referral",
