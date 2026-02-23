@@ -11,16 +11,17 @@
 </head>
 <body>
 <div class="header">
-  <div class="header-inner">
-    <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
-    <div>
-      <h1 id="room-title">Capturing Room</h1>
-      <div class="subtitle" id="capture-subtitle">Take 8 guided photos</div>
+  <div class="flex-between">
+    <div class="header-inner">
+      <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
     </div>
+    <a href="/" id="back-link-header" class="btn btn-back">&lsaquo;</a>
   </div>
 </div>
 
 <div class="container">
+  <p id="room-title" style="text-align:center;font-weight:600;margin-bottom:.15rem">Capturing Room</p>
+  <p class="text-muted" id="capture-subtitle" style="text-align:center;margin-bottom:.75rem;font-size:.9rem">Take 8 guided photos</p>
   <!-- Camera viewfinder -->
   <div class="viewfinder" id="viewfinder">
     <video id="camera" autoplay playsinline muted></video>

@@ -11,17 +11,17 @@
 </head>
 <body>
 <div class="header">
-  <div class="header-inner">
-    <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
-    <div style="flex:1">
-      <h1 id="room-title">360° Capture</h1>
-      <div class="subtitle" id="capture-subtitle">0 of 12 sectors</div>
+  <div class="flex-between">
+    <div class="header-inner">
+      <a href="/owner"><img src="/static/images/walkthru-x-logo.png" alt="Walkthru-X" class="app-logo"></a>
     </div>
-    <a href="/" id="back-link" class="btn-back">&#8249;</a>
+    <a href="/" id="back-link" class="btn btn-back">&lsaquo;</a>
   </div>
 </div>
 
 <div class="container">
+  <p id="room-title" style="text-align:center;font-weight:600;margin-bottom:.15rem">360° Capture</p>
+  <p class="text-muted" id="capture-subtitle" style="text-align:center;margin-bottom:.75rem;font-size:.9rem">0 of 12 sectors</p>
   <!-- Compass permission (iOS) -->
   <div class="card hidden" id="compass-card">
     <p class="text-muted mb-1">This mode uses your device compass to track which direction you're facing.</p>
